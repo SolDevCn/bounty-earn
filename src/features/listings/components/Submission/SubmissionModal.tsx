@@ -467,7 +467,7 @@ export const SubmissionModal = ({
                 target="_blank"
                 textUnderlineOffset={2}
               >
-                Terms of Use
+                使用条款
               </Link>
               .
             </Text>
