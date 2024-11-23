@@ -220,7 +220,7 @@ export const SubmissionModal = ({
       break;
     case 'bounty':
       headerText = '提交赏金任务';
-      subheadingText = '期待看到你的创造力';
+      subheadingText = '非常期待您的创作';
       break;
     case 'hackathon':
       headerText = 'Solana Radar Track Submission';
