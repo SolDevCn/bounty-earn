@@ -996,7 +996,7 @@ const faqs: { question: string; answer: string }[] = [
   {
     question: 'How do I enter the competition?',
     answer:
-      'mitting to any of the ten challenges under the Frontend and Rust tracks.',
+      'By submitting to any of the ten challenges under the Frontend and Rust tracks.',
   },
   {
     question: 'Which teams are hiring?',
@@ -1334,7 +1334,7 @@ interface CountryLeader {
   location: string;
   submission_count: number;
 }
-export const getServerSideProps: GetServerSideProps = async ({ }) => {
+export const getServerSideProps: GetServerSideProps = async ({}) => {
   const countryLeaders = await prisma.$queryRaw<CountryLeader[]>`
 SELECT
     u.location,
