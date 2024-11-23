@@ -93,7 +93,7 @@ export function Banner({
                   whiteSpace={'nowrap'}
                 >
                   {!isHackathon
-                    ? `Sponsor since ${stats?.yearOnPlatform}`
+                    ? `以项目方身份贡献始于 ${stats?.yearOnPlatform}`
                     : 'Hackathon'}
                 </Text>
               )}
@@ -120,7 +120,7 @@ export function Banner({
                   fontWeight={400}
                   whiteSpace={'nowrap'}
                 >
-                  {!isHackathon ? 'Rewarded' : 'Total Prizes'}
+                  {!isHackathon ? '总奖金' : 'Total Prizes'}
                 </Text>
                 <MdInfoOutline color="#94a3b8" size={16} />
               </Flex>
@@ -151,7 +151,7 @@ export function Banner({
                   fontWeight={400}
                   whiteSpace={'nowrap'}
                 >
-                  {!isHackathon ? 'Listings' : 'Tracks'}
+                  {!isHackathon ? '已列出' : 'Tracks'}
                 </Text>
                 <MdInfoOutline color="#94a3b8" size={16} />
               </Flex>
@@ -179,7 +179,7 @@ export function Banner({
                   fontWeight={400}
                   whiteSpace={'nowrap'}
                 >
-                  Submissions
+                  提交
                 </Text>
                 <MdInfoOutline color="#94a3b8" size={16} />
               </Flex>
@@ -229,14 +229,14 @@ export function Banner({
                   fontWeight={600}
                   whiteSpace={'nowrap'}
                 >
-                  Stuck somewhere?
+                  卡在哪里？
                 </Text>
                 <Text
                   color="brand.slate.500"
                   fontWeight={600}
                   whiteSpace={'nowrap'}
                 >
-                  Message Us
+                  联系我们
                 </Text>
               </Box>
             </Flex>
