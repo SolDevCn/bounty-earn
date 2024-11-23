@@ -561,9 +561,9 @@ export const ListingPayments = ({
               <FormControl isRequired>
                 <Flex>
                   <ListingFormLabel htmlFor="compensationType">
-                    Compensation Type
+                    赏金类型
                   </ListingFormLabel>
-                  <ListingTooltip label="Would you like to keep a fixed compensation for this project, or let applicants send in their quotes?" />
+                  <ListingTooltip label="您希望为此任务设置固定报酬，还是让申请者提交他们的报价?" />
                 </Flex>
                 <Controller
                   control={control}
@@ -689,7 +689,7 @@ export const ListingPayments = ({
           {compensationType === 'fixed' && isProject && (
             <FormControl w="full" mt={5} isRequired>
               <ListingFormLabel htmlFor="rewardAmount">
-                Total Compensation (in{' '}
+                总报酬 (in{' '}
                 {tokenList.find((t) => t.tokenSymbol === token)?.tokenSymbol})
               </ListingFormLabel>
 
