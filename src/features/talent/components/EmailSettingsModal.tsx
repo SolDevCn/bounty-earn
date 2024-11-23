@@ -95,10 +95,10 @@ export const EmailSettingsModal = ({
           <ModalCloseButton mt={2} />
           <ModalBody>
             <Text color="brand.slate.700" fontSize="2xl" fontWeight={600}>
-              Update Email Preferences
+              更新邮箱设置
             </Text>
             <Text mt={1} color="brand.slate.400" fontWeight={500}>
-              Tell us which emails you would like to receive!
+              告诉我们您希望接收哪些邮件！
             </Text>
             {showSponsorAlerts && (
               <Box mt={6}>
@@ -109,18 +109,15 @@ export const EmailSettingsModal = ({
                   fontSize="sm"
                   letterSpacing={0.8}
                 >
-                  SPONSOR ALERTS
+                  项目方警报
                 </Text>
                 <AlertOption
-                  title="New submissions received for your listing"
+                  title="已列出的新提交"
                   category="submissionSponsor"
                 />
+                <AlertOption title="已列出的新评论" category="commentSponsor" />
                 <AlertOption
-                  title="Comments Received on your listing"
-                  category="commentSponsor"
-                />
-                <AlertOption
-                  title="Deadline related reminders"
+                  title="已列出的截止日期相关提醒"
                   category="deadlineSponsor"
                 />
               </Box>
@@ -163,14 +160,14 @@ export const EmailSettingsModal = ({
                   fontSize="sm"
                   letterSpacing={0.8}
                 >
-                  GENERAL ALERTS
+                  通用警报
                 </Text>
                 <AlertOption
-                  title="Comment replies and tags"
+                  title="评论回复和标签"
                   category="replyOrTagComment"
                 />
                 <AlertOption
-                  title="Product updates and newsletters"
+                  title="产品更新和订阅"
                   category="productAndNewsletter"
                 />
               </Box>
@@ -185,7 +182,7 @@ export const EmailSettingsModal = ({
               loadingText="Updating Preferences.."
               onClick={updateEmailSettings}
             >
-              Update Preferences
+              更新设置
             </Button>
           </ModalFooter>
         </ModalContent>

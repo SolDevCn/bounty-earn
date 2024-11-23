@@ -153,13 +153,7 @@ export default function SponsorListings() {
   }, [allListings]);
 
   const ALL_FILTERS = useMemo(() => {
-    const filters = [
-      'Draft',
-      'In Progress',
-      'In Review',
-      'Payment Pending',
-      'Completed',
-    ];
+    const filters = ['草稿', '进行中', '审核中', '待支付', '已完成'];
     if (hasGrants) {
       filters.unshift('Ongoing');
     }
@@ -178,7 +172,12 @@ export default function SponsorListings() {
 
   const handleTabChange = useCallback(
     (index: number) => {
-      const tabTypes = ['all', 'bounty', 'project', hasGrants ? 'grant' : ''];
+      const tabTypes = [
+        '全部',
+        '赏金任务',
+        '项目任务',
+        hasGrants ? 'grant' : '',
+      ];
       const tabType = tabTypes[index] || 'all';
       setSelectedTab(tabType);
       setCurrentPage(0);
@@ -202,13 +201,11 @@ export default function SponsorListings() {
             borderColor="brand.slate.200"
             orientation="vertical"
           />
-          <Text color="brand.slate.500">
-            The one place to manage your listings
-          </Text>
+          <Text color="brand.slate.500">一站式管理您的任务列表</Text>
         </Flex>
         <Flex align="center" gap={2}>
           <Text color="brand.slate.500" fontSize={'sm'} letterSpacing={'-1%'}>
-            Filter by status
+            按状态筛选
           </Text>
           <Menu>
             <MenuButton
