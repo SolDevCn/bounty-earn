@@ -996,7 +996,7 @@ const faqs: { question: string; answer: string }[] = [
   {
     question: 'How do I enter the competition?',
     answer:
-      'By submitting to any of the ten challenges under the Frontend and Rust tracks.',
+      'mitting to any of the ten challenges under the Frontend and Rust tracks.',
   },
   {
     question: 'Which teams are hiring?',
