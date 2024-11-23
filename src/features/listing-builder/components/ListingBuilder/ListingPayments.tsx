@@ -588,9 +588,9 @@ export const ListingPayments = ({
                       <option hidden disabled value="">
                         Select a Compensation Type
                       </option>
-                      <option value="fixed">Fixed Compensation</option>
-                      <option value="range">Pre-decided Range</option>
-                      <option value="variable">Variable Compensation</option>
+                      <option value="fixed">固定报酬</option>
+                      <option value="range">预先决定范围</option>
+                      <option value="variable">可变报酬</option>
                     </Select>
                   )}
                 />

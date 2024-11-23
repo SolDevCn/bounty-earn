@@ -176,7 +176,7 @@ ${listingLink('twitter')}
                     href={twitterShareLink}
                     target="_blank"
                   >
-                    Share on
+                    分享到
                     <FaXTwitter style={{ width: '1em', height: '1em' }} />
                   </Link>
                   {isVerified ? (

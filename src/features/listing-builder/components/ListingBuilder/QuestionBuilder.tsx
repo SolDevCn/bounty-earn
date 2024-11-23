@@ -139,7 +139,7 @@ export const QuestionBuilder = ({
               注意
             </Text>
             <Text mt={'0px !important'} color={'#94A3B8'} fontSize={'0.88rem'}>
-              默认会收集姓名、邮箱、Discord/Twitter、SOL 钱包地址和档案链
+              默认会收集姓名、邮箱、Telegram/Twitter、SOL 钱包地址和档案链
               接，请在此处询问其他您想了解的信息！
             </Text>
           </VStack>
