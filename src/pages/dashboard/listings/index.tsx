@@ -153,7 +153,7 @@ export default function SponsorListings() {
   }, [allListings]);
 
   const ALL_FILTERS = useMemo(() => {
-    const filters = ['草稿', '进行中', '审核中', '待支付', '已完成'];
+    const filters = ['草稿', '进行中', '审核中', '待付款', '已完成'];
     if (hasGrants) {
       filters.unshift('Ongoing');
     }

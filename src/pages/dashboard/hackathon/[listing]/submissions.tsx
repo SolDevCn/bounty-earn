@@ -336,7 +336,7 @@ export default function BountySubmissions({ listing }: Props) {
                           size="sm"
                           variant="outline"
                         >
-                          往前
+                          上一页
                         </Button>
                         <Text color="brand.slate.400" fontSize="sm">
                           <Text as="span" fontWeight={700}>
@@ -366,7 +366,7 @@ export default function BountySubmissions({ listing }: Props) {
                           size="sm"
                           variant="outline"
                         >
-                          往后
+                          下一页
                         </Button>
                       </>
                     )}

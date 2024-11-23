@@ -30,9 +30,9 @@ export function Banner({
   const posthog = usePostHog();
   const sponsorId = isHackathon ? user?.hackathonId : user?.currentSponsorId;
 
-  const tooltipTextReward = `Total compensation (in USD) of listings where the winners have been announced`;
-  const tooltipTextListings = `Total number of listings added to Earn`;
-  const tooltipTextSubmissions = `Total number of submissions/applications received on all listings`;
+  const tooltipTextReward = `已公布获奖者的赏金任务总报酬（美元）`;
+  const tooltipTextListings = `已发布任务`;
+  const tooltipTextSubmissions = `所有任务已收到的提交/申请`;
 
   const sponsor = isHackathon ? stats : user?.currentSponsor;
 
@@ -120,7 +120,7 @@ export function Banner({
                   fontWeight={400}
                   whiteSpace={'nowrap'}
                 >
-                  {!isHackathon ? '总奖金' : 'Total Prizes'}
+                  {!isHackathon ? '已奖励' : 'Total Prizes'}
                 </Text>
                 <MdInfoOutline color="#94a3b8" size={16} />
               </Flex>
@@ -151,7 +151,7 @@ export function Banner({
                   fontWeight={400}
                   whiteSpace={'nowrap'}
                 >
-                  {!isHackathon ? '已列出' : 'Tracks'}
+                  {!isHackathon ? '任务列表' : 'Tracks'}
                 </Text>
                 <MdInfoOutline color="#94a3b8" size={16} />
               </Flex>
