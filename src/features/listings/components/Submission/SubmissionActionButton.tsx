@@ -119,7 +119,7 @@ export const SubmissionActionButton = ({
       break;
 
     default:
-      buttonText = isProject ? 'Apply Now' : '现在提交';
+      buttonText = isProject ? '立即申请' : '现在提交';
       if (
         listing.compensationType === 'variable' ||
         listing.compensationType === 'range'
