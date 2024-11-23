@@ -318,7 +318,7 @@ export default function Hackathon() {
             fontWeight={600}
             textAlign={'center'}
           >
-            创建您第一个列出任务
+            创建您第一个任务
           </Text>
           <Text
             mx="auto"

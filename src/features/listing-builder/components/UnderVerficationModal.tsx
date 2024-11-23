@@ -43,10 +43,10 @@ export function UnderVerificationModal({ onClose, isOpen }: Props) {
         <ModalBody>
           <VStack gap={3}>
             <Text fontSize="lg" fontWeight={600}>
-              我们需要在您的任务发布之前进行批核。
+              我们需要在您的任务发布之前进行审核。
             </Text>
             <Text color="brand.slate.500">
-              {`我们需要审核项目方资质，以构建信任并确保平台免受不良行为者的影响。我们会尽力在 48 小时内完成批核。 `}
+              {`我们需要审核项目方资质，以构建信任并确保平台免受不良行为者的影响。我们会尽力在 48 小时内完成审核。 `}
             </Text>
             <Text color="brand.slate.500">
               {`一旦通过审核，您的列表将自动发布。如果我们需要任何信息，我们将与您联系。 `}

@@ -229,7 +229,7 @@ export function Banner({
                   fontWeight={600}
                   whiteSpace={'nowrap'}
                 >
-                  卡在哪里？
+                  遇到什么问题？
                 </Text>
                 <Text
                   color="brand.slate.500"
