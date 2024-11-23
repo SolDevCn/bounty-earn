@@ -66,8 +66,8 @@ export const FeedPageLayout = ({
             borderRightWidth={'1px'}
           >
             <NavItem name="首页" icon={HomeIcon} href="/" />
-            <NavItem name="排行榜" icon={LeaderboardIcon} href="/排行榜" />
-            <NavItem name="Winners" icon={WinnersIcon} href="/feed/winners" />
+            <NavItem name="排行榜" icon={LeaderboardIcon} href="/Leaderboard" />
+            <NavItem name="获胜者" icon={WinnersIcon} href="/feed/winners" />
             {!isHomePage && (
               <NavItem name="All Posts" icon={AllPostsIcon} href="/feed" />
             )}
