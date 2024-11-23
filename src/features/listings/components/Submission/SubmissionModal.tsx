@@ -386,7 +386,7 @@ export const SubmissionModal = ({
 
               <TextInputWithHelper
                 id="publicKey"
-                label="你的Solana 钱包地址"
+                label="你的 Solana 钱包地址"
                 helperText={
                   <>
                     这是您收取奖励的钱包地址。如果您想编辑，请点击这里。{' '}
