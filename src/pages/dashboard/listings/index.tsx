@@ -153,7 +153,13 @@ export default function SponsorListings() {
   }, [allListings]);
 
   const ALL_FILTERS = useMemo(() => {
-    const filters = ['草稿', '进行中', '审核中', '待付款', '已完成'];
+    const filters = [
+      'Draft',
+      'In Progress',
+      'In Review',
+      'Payment Pending',
+      'Completed',
+    ];
     if (hasGrants) {
       filters.unshift('Ongoing');
     }
@@ -175,7 +181,7 @@ export default function SponsorListings() {
       const tabTypes = [
         '全部',
         '赏金任务',
-        '项目任务',
+        '定向任务',
         hasGrants ? 'grant' : '',
       ];
       const tabType = tabTypes[index] || 'all';
@@ -452,7 +458,7 @@ export default function SponsorListings() {
               cannotCreateNewListing
                 ? isSponsorActive
                   ? 'Creating a new listing has been temporarily locked for you since you have 5 listings which are “Rolling” or “In Review”. Please announce the winners for such listings to create new listings.'
-                  : '发送邮件至 abc@solar.com 或者Telegrem @abc，联系管理员，开启相关权限'
+                  : '发送邮件至vesper.yang.blockchain@gmail.com 或者Telegrem @cryptosheep1，联系管理员，开启相关权限'
                 : ''
             }
           >
