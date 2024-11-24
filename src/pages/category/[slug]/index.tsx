@@ -16,7 +16,7 @@ import { Home } from '@/layouts/Home';
 import { Meta } from '@/layouts/Meta';
 import { dayjs } from '@/utils/dayjs';
 
-type SlugKeys = 'design' | 'content' | 'development' | 'other';
+type SlugKeys = '设计' | '内容' | '开发' | '其他';
 
 function ListingCategoryPage({ slug }: { slug: string }) {
   const router = useRouter();
@@ -38,10 +38,10 @@ function ListingCategoryPage({ slug }: { slug: string }) {
   );
 
   const titlesForSlugs: { [key in SlugKeys]: string } = {
-    design: 'Design Bounties and Grants | Solar Earn',
-    content: 'Content Bounties and Grants | Solar Earn',
-    development: 'Development Bounties and Grants | Solar Earn',
-    other: 'Other Bounties and Grants | Solar Earn',
+    设计: '设计 赏金和任务 | Solar Earn',
+    内容: '内容 赏金和任务 | Solar Earn',
+    开发: '开发 赏金和任务 | Solar Earn',
+    其他: '其他 赏金和任务 | Solar Earn',
   };
 
   const titleKey = slug as SlugKeys;
@@ -72,7 +72,7 @@ function ListingCategoryPage({ slug }: { slug: string }) {
         />
         <ListingSection
           type="grants"
-          title={`${formattedSlug} Grants`}
+          title={`${formattedSlug} 资助`}
           sub="为建设者提供资金支持"
           emoji="/assets/home/emojis/grants.webp"
           showViewAll
@@ -111,7 +111,7 @@ export async function getServerSideProps(context: NextPageContext) {
   }
 
   const normalizedSlug = typeof slug === 'string' ? slug.toLowerCase() : '';
-  const validCategories = ['design', 'content', 'development', 'other'];
+  const validCategories = ['设计', '内容', '开发', '其他'];
 
   if (!validCategories.includes(normalizedSlug)) {
     return {
