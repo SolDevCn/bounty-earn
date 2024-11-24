@@ -65,7 +65,7 @@ function ListingCategoryPage({ slug }: { slug: string }) {
           bounties={listingsData ?? []}
           isListingsLoading={isListingsLoading}
           emoji="/assets/home/emojis/moneyman.webp"
-          title={`${formattedSlug} Gigs`}
+          title={`${formattedSlug} `}
           viewAllLink={`/category/${slug}/all`}
           showViewAll
           take={10}
