@@ -279,7 +279,7 @@ export function RightSideBar({
                         zeroPadDays={1}
                       />
                     </Text>
-                    <Text color={'#94A3B8'}>Until Submissions Open</Text>
+                    <Text color={'#94A3B8'}>直至开始提交</Text>
                   </VStack>
                 </Flex>
               </Flex>
@@ -296,7 +296,7 @@ export function RightSideBar({
                 >
                   {timeToComplete}
                 </Text>
-                <Text color={'#94A3B8'}>Time to Complete</Text>
+                <Text color={'#94A3B8'}>完成时间</Text>
               </Flex>
             )}
             <SubmissionActionButton listing={listing} isTemplate={isTemplate} />

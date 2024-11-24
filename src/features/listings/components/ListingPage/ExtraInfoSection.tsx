@@ -26,19 +26,6 @@ export function ExtraInfoSection({
   const posthog = usePostHog();
   return (
     <VStack gap={8} w={{ base: 'full', md: '22rem' }} pt={2}>
-      {region && region !== 'GLOBAL' && (
-        <VStack align={'start'} w="full" fontSize={'sm'}>
-          <Text color={'brand.slate.600'} fontWeight={600}>
-            区域性 {isGrant ? '赏金' : '任务'}
-          </Text>
-          <Text h="100%" color={'brand.slate.500'}>
-            <>
-              This {isGrant ? 'grant' : 'listing'} is only open for people in{' '}
-              <Text fontWeight={600}>{region}</Text>
-            </>
-          </Text>
-        </VStack>
-      )}
       {Hackathon && (
         <VStack align={'start'} w="full" fontSize="sm">
           <Text color={'brand.slate.600'} fontWeight={600}>
