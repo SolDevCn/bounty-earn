@@ -106,7 +106,7 @@ export const FeatureModal = ({
                   Check it out <ArrowForwardIcon />
                 </>
               ) : (
-                '你最好知道!'
+                '了解更多!'
               )}
             </Button>
           </Link>

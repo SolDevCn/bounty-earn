@@ -29,7 +29,7 @@ export function ExtraInfoSection({
       {region && region !== 'GLOBAL' && (
         <VStack align={'start'} w="full" fontSize={'sm'}>
           <Text color={'brand.slate.600'} fontWeight={600}>
-            REGIONAL {isGrant ? 'GRANT' : 'LISTING'}
+            区域性 {isGrant ? '赏金' : '任务'}
           </Text>
           <Text h="100%" color={'brand.slate.500'}>
             <>
