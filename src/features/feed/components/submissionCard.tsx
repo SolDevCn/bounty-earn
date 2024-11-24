@@ -96,7 +96,7 @@ export function SubmissionCard({ sub, type, commentCount }: SubCardProps) {
             pointerEvents: sub?.id || isProject ? 'all' : 'none',
           }}
         >
-          {isProject ? 'View Listing' : '浏览提交'}
+          {isProject ? '浏览提交' : '浏览提交'}
         </FeedCardLink>
       </Tooltip>
     </>
