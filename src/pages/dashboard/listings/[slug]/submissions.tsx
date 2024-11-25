@@ -678,7 +678,7 @@ export default function BountySubmissions({ slug }: Props) {
               >
                 {selectedSubmissionIds.size > 100 && (
                   <Text pb={2} color="red" textAlign="center">
-                    Cannot select more than 100 applications
+                    不能选择超过100个申请
                   </Text>
                 )}
                 <HStack gap={4} fontSize={'lg'}>
@@ -695,7 +695,7 @@ export default function BountySubmissions({ slug }: Props) {
                     }}
                     variant="link"
                   >
-                    UNSELECT ALL
+                    取消选择
                   </Button>
                   <Button
                     gap={2}

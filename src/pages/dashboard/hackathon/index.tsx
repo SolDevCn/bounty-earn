@@ -208,7 +208,7 @@ export default function Hackathon() {
           <ModalCloseButton />
           <ModalBody>
             <Text color="brand.slate.500">
-              取消发布后，此任务将从主页隐藏。您确定要取消发布此列表吗？
+              取消发布后，此任务将从主页隐藏。您确定要取消发布此任务吗？
             </Text>
           </ModalBody>
 
