@@ -684,7 +684,7 @@ export default function BountySubmissions({ slug }: Props) {
                 <HStack gap={4} fontSize={'lg'}>
                   <HStack fontWeight={500}>
                     <Text>{selectedSubmissionIds.size}</Text>
-                    <Text color="brand.slate.500">Selected</Text>
+                    <Text color="brand.slate.500">已选择</Text>
                   </HStack>
                   <Box w="1px" h={4} bg="brand.slate.300" />
                   <Button
