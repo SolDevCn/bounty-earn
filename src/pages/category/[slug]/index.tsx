@@ -111,7 +111,7 @@ export async function getServerSideProps(context: NextPageContext) {
   }
 
   const normalizedSlug = typeof slug === 'string' ? slug.toLowerCase() : '';
-  const validCategories = ['设计', '内容', '开发', '其他'];
+  const validCategories = ['design', 'content', 'development', 'other'];
 
   if (!validCategories.includes(normalizedSlug)) {
     return {
