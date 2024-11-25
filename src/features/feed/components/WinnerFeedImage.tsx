@@ -74,7 +74,7 @@ export const WinnerFeedImage = ({
         {!!grantApplicationAmount ? (
           'GRANT'
         ) : (
-          <>{getRankLabels(Number(winnerPosition))?.toUpperCase()} PRIZE</>
+          <>{getRankLabels(Number(winnerPosition))?.toUpperCase()} 奖励</>
         )}
       </Text>
     </Flex>
