@@ -72,7 +72,7 @@ export function UserMenu({}) {
           size="sm"
           variant={'ghost'}
         >
-          评论任务前请先完善个人信息
+          请先完善个人信息
         </Button>
       )}
       <Menu>
