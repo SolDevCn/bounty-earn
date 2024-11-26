@@ -327,7 +327,7 @@ export const ListingPayments = ({
         if (!minRewardAsk || !maxRewardAsk) {
           errorMessage = '请说明最低和最高补偿范围';
         } else if (maxRewardAsk < minRewardAsk) {
-          errorMessage = '“补偿范围不正确，最大值必须大于最小值';
+          errorMessage = '补偿范围不正确，最大值必须大于最小值';
         } else if (maxRewardAsk === minRewardAsk) {
           errorMessage = '补偿范围不正确，最大值必须大于最小值';
         }
@@ -347,7 +347,7 @@ export const ListingPayments = ({
       ) {
         errorMessage = '没有奖金奖励';
       } else if (rewards?.[BONUS_REWARD_POSITION] === 0) {
-        errorMessage = `奖金不能为 0`;
+        errorMessage = '奖金不能为 0';
       } else if (cleanRewardPrizes(rewards).length !== prizes.length) {
         errorMessage = '请填满所有的奖金或删除未使用的';
       }
