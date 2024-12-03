@@ -1,3 +1,4 @@
+// 导入必要的组件和类型
 import { Box, Flex } from '@chakra-ui/react';
 import { Regions } from '@prisma/client';
 import { useQuery } from '@tanstack/react-query';
@@ -24,14 +25,16 @@ import { authOptions } from './api/auth/[...nextauth]';
 import { getForYouListings } from './api/homepage/for-you';
 import { getListings } from './api/homepage/listings';
 
+// 定义页面组件的Props接口
 interface Props {
-  listings: Listing[];
-  openForYouListings: Listing[];
-  isAuth: boolean;
-  userRegion: string[] | null;
-  userGrantsRegion: Regions[] | null;
+  listings: Listing[];           // 所有列表项
+  openForYouListings: Listing[]; // 为用户推荐的开放列表项
+  isAuth: boolean;              // 用户是否已认证
+  userRegion: string[] | null;  // 用户所在地区
+  userGrantsRegion: Regions[] | null; // 用户的资助地区
 }
 
+// 动态导入PWA安装模态框组件
 const InstallPWAModal = dynamic(
   () =>
     import('@/components/modals/InstallPWAModal').then(
@@ -40,17 +43,20 @@ const InstallPWAModal = dynamic(
   { ssr: false },
 );
 
+// 动态导入资助卡片组件
 const GrantsCard = dynamic(
   () => import('@/features/grants').then((mod) => mod.GrantsCard),
   { ssr: false },
 );
 
+// 动态导入空状态组件
 const EmptySection = dynamic(
   () =>
     import('@/components/shared/EmptySection').then((mod) => mod.EmptySection),
   { ssr: false },
 );
 
+// 主页组件
 export default function HomePage({
   listings,
   isAuth,
@@ -58,10 +64,13 @@ export default function HomePage({
   openForYouListings,
   userGrantsRegion,
 }: Props) {
+  // 状态管理：合并后的列表项
   const [combinedListings, setCombinedListings] = useState(listings);
+  // 状态管理：合并后的推荐列表项
   const [combinedForYouListings, setCombinedForYouListings] =
     useState(listings);
 
+  // 获取审核中的推荐列表项
   const { data: reviewForYouListings } = useQuery({
     ...homepageForYouListingsQuery({
       statusFilter: 'review',
@@ -70,6 +79,7 @@ export default function HomePage({
     enabled: isAuth,
   });
 
+  // 获取已完成的推荐列表项
   const { data: completeForYouListings } = useQuery({
     ...homepageForYouListingsQuery({
       statusFilter: 'completed',
@@ -78,6 +88,7 @@ export default function HomePage({
     enabled: isAuth,
   });
 
+  // 获取审核中的普通列表项
   const { data: reviewListings } = useQuery(
     homepageListingsQuery({
       order: 'desc',
@@ -87,6 +98,7 @@ export default function HomePage({
     }),
   );
 
+  // 获取已完成的普通列表项
   const { data: completeListings } = useQuery(
     homepageListingsQuery({
       order: 'desc',
@@ -96,12 +108,14 @@ export default function HomePage({
     }),
   );
 
+  // 获取资助项目数据
   const { data: grants } = useQuery(
     homepageGrantsQuery({
       userRegion: userGrantsRegion,
     }),
   );
 
+  // 当审核和完成的列表项数据更新时，合并列表
   useEffect(() => {
     if (reviewListings && completeListings) {
       setCombinedListings([
@@ -112,6 +126,7 @@ export default function HomePage({
     }
   }, [reviewListings, completeListings, listings]);
 
+  // 当推荐列表项数据更新时，合并推荐列表
   useEffect(() => {
     if (reviewForYouListings && completeForYouListings) {
       setCombinedForYouListings([
@@ -124,8 +139,10 @@ export default function HomePage({
 
   return (
     <Home type="landing" isAuth={isAuth}>
+      {/* PWA安装提示模态框 */}
       <InstallPWAModal />
       <Box w={'100%'}>
+        {/* 列表标签页组件 */}
         <ListingTabs
           bounties={combinedListings}
           forYou={combinedForYouListings}
@@ -136,6 +153,7 @@ export default function HomePage({
           take={20}
           showViewAll
         />
+        {/* 资助项目部分（已注释掉） */}
         {/* <ListingSection
           type="grants"
           title="资助"
@@ -161,14 +179,17 @@ export default function HomePage({
   );
 }
 
+// 服务器端数据获取函数
 export const getServerSideProps: GetServerSideProps<Props> = async (
   context,
 ) => {
+  // 获取用户会话信息
   const session = await getServerSession(context.req, context.res, authOptions);
   let userRegion: string[] | null | undefined = null;
   let userGrantsRegion: Regions[] | null | undefined = null;
   let isAuth = false;
 
+  // 如果用户已登录，设置用户地区信息
   if (session && session.user.id) {
     isAuth = true;
     const matchedRegion = getCombinedRegion(session.user.location);
@@ -187,6 +208,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     }
   }
 
+  // 获取为用户推荐的开放列表项
   let openForYouListings: Awaited<ReturnType<typeof getForYouListings>> = [];
   if (session && session.user.id) {
     openForYouListings = await getForYouListings({
@@ -196,6 +218,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     });
   }
 
+  // 获取所有开放的列表项
   const openListings = await getListings({
     statusFilter: 'open',
     order: 'desc',

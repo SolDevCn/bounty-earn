@@ -1,3 +1,4 @@
+// 导入必要的UI组件和依赖
 import {
   Box,
   Button,
@@ -18,15 +19,17 @@ import { useEffect, useState } from 'react';
 
 import { useUser } from '@/store/user';
 
+// 根据ID查找匹配的调查问卷
 function getMatchingSurvey(surveys: Survey[], id: string): Survey | null {
   const survey = surveys.find((survey) => survey.id === id);
   return survey || null;
 }
 
+// 调查问卷模态框组件
 export const SurveyModal = ({
-  isOpen,
-  onClose,
-  surveyId,
+  isOpen,                   // 是否显示模态框
+  onClose,                  // 关闭模态框的回调函数
+  surveyId,                // 调查问卷ID
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -35,26 +38,32 @@ export const SurveyModal = ({
   const { refetchUser } = useUser();
   const posthog = usePostHog();
 
+  // 状态管理
   const [question, setQuestion] = useState<SurveyQuestion | undefined | null>(
     null,
-  );
-  const [response, setResponse] = useState<string | number>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  );                       // 当前问题
+  const [response, setResponse] = useState<string | number>();     // 用户回答
+  const [isSubmitting, setIsSubmitting] = useState(false);        // 提交状态
 
+  // 处理评分类型问题的回答
   const handleRating = (rate: number) => {
     setResponse(rate);
   };
 
+  // 处理单选类型问题的回答
   const handleChoiceSelection = (choice: string) => {
     setResponse(choice);
   };
 
+  // 提交问卷回答
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    // 记录用户回答
     posthog.capture('survey sent', {
       $survey_id: surveyId,
       $survey_response: response,
     });
+    // 更新用户的调查问卷状态
     await axios.post('/api/user/update-survey/', {
       surveyId,
     });
@@ -63,6 +72,7 @@ export const SurveyModal = ({
     onClose();
   };
 
+  // 获取调查问卷数据
   useEffect(() => {
     posthog.getActiveMatchingSurveys((surveys) => {
       const surveyById = getMatchingSurvey(surveys, surveyId);
@@ -80,6 +90,7 @@ export const SurveyModal = ({
     >
       <ModalOverlay />
       <ModalContent p={6}>
+        {/* 问卷加载状态 */}
         {!question ? (
           <Box>
             <Skeleton h="18px" mb={2} />
@@ -94,6 +105,7 @@ export const SurveyModal = ({
         ) : (
           <>
             <Box>
+              {/* 问题标题和描述 */}
               <Text
                 mb={2}
                 color="brand.slate.700"
@@ -106,8 +118,10 @@ export const SurveyModal = ({
               <Text mb={5} color="brand.slate.500" fontSize="sm">
                 {question?.description}
               </Text>
+              {/* 评分类型问题 */}
               {question?.type === 'rating' && (
                 <Box>
+                  {/* 评分按钮组 */}
                   <Flex justify="center" gap={4} mt={2}>
                     {[...Array(question.scale)].map((_, i) => (
                       <Button
@@ -120,6 +134,7 @@ export const SurveyModal = ({
                       </Button>
                     ))}
                   </Flex>
+                  {/* 评分说明 */}
                   <Flex justify={'space-between'} flexGrow={1} mt={0.5}>
                     <Text color="brand.slate.400" fontSize="xs">
                       {question.lowerBoundLabel}
@@ -130,6 +145,7 @@ export const SurveyModal = ({
                   </Flex>
                 </Box>
               )}
+              {/* 单选类型问题 */}
               {question?.type === 'single_choice' && (
                 <RadioGroup
                   mb={3}
@@ -153,6 +169,7 @@ export const SurveyModal = ({
                 </RadioGroup>
               )}
             </Box>
+            {/* 提交按钮 */}
             <Button
               mt={4}
               isDisabled={!response}

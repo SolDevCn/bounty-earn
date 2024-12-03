@@ -1,3 +1,4 @@
+// 导入必要的UI组件和React hooks
 import {
   Flex,
   FormControl,
@@ -13,6 +14,7 @@ import makeAnimated from 'react-select/animated';
 import { type MultiSelectOptions } from '@/constants';
 import { MainSkills, skillSubSkillMap } from '@/interface/skills';
 
+// 移除数组中的重复选项
 function removeDuplicates(arr: MultiSelectOptions[]): MultiSelectOptions[] {
   return Array.from(
     arr
@@ -26,17 +28,20 @@ function removeDuplicates(arr: MultiSelectOptions[]): MultiSelectOptions[] {
   );
 }
 
+// 技能选择组件的Props接口
 interface Props {
-  skills: MultiSelectOptions[];
-  subSkills: MultiSelectOptions[];
-  setSkills: Dispatch<SetStateAction<MultiSelectOptions[]>>;
-  setSubSkills: Dispatch<SetStateAction<MultiSelectOptions[]>>;
-  errorSkill?: boolean;
-  errorSubSkill?: boolean;
-  skillLabel?: string;
-  subSkillLabel?: string;
-  helperText?: string;
+  skills: MultiSelectOptions[];           // 已选择的主要技能列表
+  subSkills: MultiSelectOptions[];        // 已选择的子技能列表
+  setSkills: Dispatch<SetStateAction<MultiSelectOptions[]>>;      // 设置主要技能的函数
+  setSubSkills: Dispatch<SetStateAction<MultiSelectOptions[]>>;   // 设置子技能的函数
+  errorSkill?: boolean;                   // 主要技能的错误状态
+  errorSubSkill?: boolean;                // 子技能的错误状态
+  skillLabel?: string;                    // 主要技能的标签文本
+  subSkillLabel?: string;                 // 子技能的标签文本
+  helperText?: string;                    // 帮助文本
 }
+
+// 技能选择组件
 export const SkillSelect = ({
   skills,
   subSkills,
@@ -48,18 +53,25 @@ export const SkillSelect = ({
   subSkillLabel = '所需子技能',
   helperText,
 }: Props) => {
+  // 创建动画组件实例
   const animatedComponents = makeAnimated();
+  
+  // 根据已选择的主要技能，获取对应的子技能选项
   const tempSubSkills: MultiSelectOptions[] = [];
   skills.forEach((s) => {
     const subSkillsForSkill =
       skillSubSkillMap[s.value as keyof typeof skillSubSkillMap];
-    // check if subSkillsForSkill exists and is an array before spreading
+    // 检查子技能是否存在且为数组
     if (Array.isArray(subSkillsForSkill)) {
       tempSubSkills.push(...subSkillsForSkill);
     }
   });
+
+  // 管理子技能选项的状态
   const [subSkillOptions, setSubSkillOptions] =
     useState<MultiSelectOptions[]>(tempSubSkills);
+
+  // 处理主要技能变化时的回调
   const handleChange = (e: MultiSelectOptions[]) => {
     const sub: MultiSelectOptions[] = [];
     e.forEach((op) => {
@@ -67,10 +79,13 @@ export const SkillSelect = ({
       // @ts-ignore
       sub.push(...(skillSubSkillMap[op.value as any] as any));
     });
+    // 更新子技能选项列表
     setSubSkillOptions(sub);
   };
+
   return (
     <>
+      {/* 主要技能选择区域 */}
       <FormControl mb={5} isRequired>
         <Flex align={'center'} justify={'start'}>
           <FormLabel
@@ -80,6 +95,7 @@ export const SkillSelect = ({
           >
             {skillLabel}
           </FormLabel>
+          {/* 提示信息图标 */}
           <Tooltip
             w="max"
             p="0.7rem"
@@ -95,6 +111,7 @@ export const SkillSelect = ({
             <Image mt={-2} alt="" src={'/assets/icons/info-icon.svg'} />
           </Tooltip>
         </Flex>
+        {/* 帮助文本 */}
         {helperText && (
           <FormHelperText
             mt={-2}
@@ -107,6 +124,7 @@ export const SkillSelect = ({
           </FormHelperText>
         )}
 
+        {/* 主要技能多选框 */}
         <ReactSelect
           styles={{
             control: (baseStyles, state) => ({
@@ -128,6 +146,8 @@ export const SkillSelect = ({
           }}
         />
       </FormControl>
+
+      {/* 子技能选择区域 */}
       <FormControl mb={5} isRequired>
         <Flex align={'center'} justify={'start'}>
           <FormLabel
@@ -137,6 +157,7 @@ export const SkillSelect = ({
           >
             {subSkillLabel}
           </FormLabel>
+          {/* 提示信息图标 */}
           <Tooltip
             w="max"
             p="0.7rem"
@@ -152,6 +173,7 @@ export const SkillSelect = ({
             <Image mt={-2} alt="" src={'/assets/icons/info-icon.svg'} />
           </Tooltip>
         </Flex>
+        {/* 子技能多选框 */}
         <ReactSelect
           styles={{
             control: (baseStyles, state) => ({

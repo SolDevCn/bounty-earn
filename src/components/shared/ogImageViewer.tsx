@@ -1,3 +1,8 @@
+/**
+ * OpenGraph图片查看器组件
+ * 用于显示和管理OpenGraph图片，支持外部URL的图片获取和本地fallback图片
+ */
+
 import {
   Image,
   type ImageProps,
@@ -11,6 +16,22 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { ogImageQuery } from '@/queries/og';
 
+/**
+ * 组件属性接口定义
+ * @interface Props
+ * @property {string} [title] - 图片标题
+ * @property {boolean} [showTitle] - 是否显示标题
+ * @property {string} [externalUrl] - 外部URL，用于获取OG图片
+ * @property {string} [imageUrl] - 直接指定的图片URL
+ * @property {ResponsiveValue<string | number>} [w] - 宽度
+ * @property {ResponsiveValue<string | number>} [h] - 高度
+ * @property {ImageProps['objectFit']} [objectFit] - 图片适应方式
+ * @property {string | number} [borderTopRadius] - 上边框圆角
+ * @property {string | number} [borderRadius] - 边框圆角
+ * @property {ResponsiveValue<string | number>} [aspectRatio] - 宽高比
+ * @property {string} [id] - 图片ID
+ * @property {'submission' | 'pow'} [type] - 图片类型
+ */
 interface Props {
   title?: string;
   showTitle?: boolean;
@@ -26,6 +47,11 @@ interface Props {
   type?: 'submission' | 'pow';
 }
 
+/**
+ * 获取随机fallback图片URL
+ * 当主图片加载失败时使用
+ * @returns {string} 随机fallback图片的URL
+ */
 const getRandomFallbackImage = (): string => {
   const _fallbackImages = [
     '/assets/fallback/og/1.webp',
@@ -55,6 +81,15 @@ const getRandomFallbackImage = (): string => {
   return fallbackImages[randomIndex]!;
 };
 
+/**
+ * OpenGraph图片查看器组件
+ * 功能：
+ * 1. 支持直接显示图片URL
+ * 2. 支持从外部URL获取OG图片
+ * 3. 图片加载失败时显示随机fallback图片
+ * 4. 可选显示图片标题
+ * 5. 支持图片加载状态显示
+ */
 export const OgImageViewer = ({
   title,
   showTitle,

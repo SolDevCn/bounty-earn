@@ -1,3 +1,4 @@
+// 导入必要的UI组件和图标
 import { CloseIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -12,41 +13,52 @@ import React, { useEffect, useRef, useState } from 'react';
 import { RxUpload } from 'react-icons/rx';
 import { toast } from 'sonner';
 
+// 图片选择器组件Props接口
 interface ImagePickerProps {
-  onChange?: (file: File) => void;
-  onReset?: () => void;
-  defaultValue?: {
+  onChange?: (file: File) => void;      // 图片变化时的回调函数
+  onReset?: () => void;                 // 重置图片时的回调函数
+  defaultValue?: {                      // 默认图片值
     url: string;
   };
 }
 
+// 图片选择器组件
 export const ImagePicker = ({
   onChange,
   onReset,
   defaultValue,
 }: ImagePickerProps) => {
+  // 图片预览URL状态
   const [preview, setPreview] = useState<string | null>(
     defaultValue?.url || null,
   );
+  // 当默认值变化时更新预览
   useEffect(() => {
     setPreview(defaultValue?.url || null);
   }, [defaultValue]);
+
+  // 拖拽状态
   const [isDragging, setIsDragging] = useState(false);
+  // 文件输入框引用
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 处理文件变化
   const handleFileChange = (file: File | null | undefined) => {
     if (file) {
+      // 检查文件大小（5MB限制）
       if (file.size > 5 * 1024 * 1024) {
         toast.error('图片大小必须小于 5MB');
         return;
       }
 
+      // 检查文件类型
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         toast.error('不支持的文件格式。请使用 JPEG、PNG 或 WebP');
         return;
       }
 
+      // 创建预览URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -56,6 +68,7 @@ export const ImagePicker = ({
     }
   };
 
+  // 重置图片选择
   const handleReset = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPreview(null);
@@ -65,23 +78,27 @@ export const ImagePicker = ({
     onReset && onReset();
   };
 
+  // 处理拖拽进入
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   };
 
+  // 处理拖拽离开
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   };
 
+  // 处理拖拽悬停
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
+  // 处理文件放置
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -106,6 +123,7 @@ export const ImagePicker = ({
       onDrop={handleDrop}
     >
       <Flex>
+        {/* 图片预览区域 */}
         {preview ? (
           <Image
             w={20}
@@ -116,6 +134,7 @@ export const ImagePicker = ({
             src={preview}
           />
         ) : (
+          // 上传图标
           <Flex
             align={'center'}
             justify={'center'}
@@ -127,6 +146,7 @@ export const ImagePicker = ({
             <Icon as={RxUpload} boxSize={6} color="brand.slate.500" />
           </Flex>
         )}
+        {/* 删除图片按钮 */}
         {preview && (
           <IconButton
             pos="absolute"
@@ -143,6 +163,7 @@ export const ImagePicker = ({
           />
         )}
 
+        {/* 提示文本 */}
         <Flex justify={'center'} direction={'column'} px={5}>
           <Text mb={1} color={'brand.slate.500'} fontWeight={600}>
             选择或拖拽图片
@@ -152,6 +173,7 @@ export const ImagePicker = ({
           </Text>
         </Flex>
       </Flex>
+      {/* 隐藏的文件输入框 */}
       <Input
         ref={fileInputRef}
         accept="image/jpeg, image/png, image/webp"
@@ -164,6 +186,7 @@ export const ImagePicker = ({
         }}
         type="file"
       />
+      {/* 点击区域覆盖层 */}
       <Box
         pos="absolute"
         top={0}

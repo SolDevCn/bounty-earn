@@ -1,5 +1,15 @@
+/**
+ * 验证徽章组件模块
+ * 包含两个SVG图标组件：标准尺寸(12x12)和大尺寸(15x15)的验证徽章
+ */
+
 import React from 'react';
 
+/**
+ * 标准尺寸验证徽章组件(12x12)
+ * @param style - 可选的自定义样式属性
+ * @returns SVG验证徽章图标
+ */
 export const VerifiedBadge = ({ style }: { style?: React.CSSProperties }) => {
   return (
     <svg
@@ -20,6 +30,11 @@ export const VerifiedBadge = ({ style }: { style?: React.CSSProperties }) => {
   );
 };
 
+/**
+ * 大尺寸验证徽章组件(15x15)
+ * 用于需要更大显示尺寸的场景
+ * @returns 大尺寸SVG验证徽章图标
+ */
 export const VerifiedBadgeLarge = () => {
   return (
     <svg

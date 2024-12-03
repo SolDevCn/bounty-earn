@@ -1,3 +1,4 @@
+// 导入必要的UI组件和图标
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { Box, HStack, IconButton, Input } from '@chakra-ui/react';
 import Link from '@tiptap/extension-link';
@@ -22,16 +23,18 @@ import {
 } from 'react-icons/bi';
 import { FaListOl, FaListUl } from 'react-icons/fa6';
 
+// 定义富文本编辑器的Props接口
 interface RichEditorProps {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  height?: string;
-  placeholder?: string;
-  isError?: boolean;
-  maxHeight?: string;
+  id: string;                              // 编辑器唯一标识
+  value: string;                           // 编辑器内容
+  onChange: (value: string) => void;       // 内容变化回调函数
+  height?: string;                         // 编辑器高度
+  placeholder?: string;                    // 占位符文本
+  isError?: boolean;                       // 是否显示错误状态
+  maxHeight?: string;                      // 最大高度
 }
 
+// 富文本编辑器组件
 export const RichEditor: React.FC<RichEditorProps> = ({
   id,
   value,
@@ -41,32 +44,37 @@ export const RichEditor: React.FC<RichEditorProps> = ({
   placeholder = '',
   isError = false,
 }) => {
+  // 编辑器DOM引用
   const editorRef = useRef<HTMLDivElement>(null);
+  
+  // 初始化TipTap编辑器
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      TaskList,
-      TaskItem,
-      Placeholder.configure({
+      StarterKit,                          // 基础功能集
+      TaskList,                            // 任务列表功能
+      TaskItem,                            // 任务项功能
+      Placeholder.configure({              // 占位符配置
         placeholder,
       }),
-      Link.configure({
+      Link.configure({                     // 链接配置
         openOnClick: false,
       }),
     ],
-    content: value || undefined,
+    content: value || undefined,           // 初始内容
     editorProps: {
       attributes: {
         class:
           'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none',
       },
     },
+    // 内容更新时的回调
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onChange(html === '<p></p>' ? '' : html);
     },
   });
 
+  // 当外部value属性变化时更新编辑器内容
   useEffect(() => {
     if (editor && value && editor.getHTML() !== value) {
       editor.commands.setContent(value);
@@ -79,11 +87,14 @@ export const RichEditor: React.FC<RichEditorProps> = ({
 
   return (
     <Box pos="relative" w="full">
+      {/* 浮动工具栏 */}
       <FloatingToolbar editor={editor} editorClassname={`editor-${id}`} />
+      {/* 编辑器容器 */}
       <Box
         className={`editor-${id}`}
         ref={editorRef}
         sx={{
+          // 占位符样式
           '.ProseMirror p.is-editor-empty:first-child::before': {
             color: 'var(--chakra-colors-gray-300)',
             content: 'attr(data-placeholder)',
@@ -106,6 +117,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({
         id="reset-des"
         rounded="lg"
       >
+        {/* TipTap编辑器内容 */}
         <EditorContent
           editor={editor}
           style={{
@@ -118,98 +130,41 @@ export const RichEditor: React.FC<RichEditorProps> = ({
   );
 };
 
+// 浮动工具栏Props接口
 interface FloatingToolbarProps {
-  editor: Editor;
-  editorClassname: string;
+  editor: Editor;                // 编辑器实例
+  editorClassname: string;      // 编辑器容器的类名
 }
 
+// 浮动工具栏组件
 const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   editor,
   editorClassname: editorClassname,
 }) => {
+  // 工具栏位置和样式状态
   const [style, setStyle] = useState({ top: 0, left: 0, opacity: 0 });
+  // 工具栏当前状态（默认/链接/隐藏）
   const [toolbarState, setToolbarState] = useState<
     'default' | 'link' | 'hidden'
   >('hidden');
+  // 链接URL输入状态
   const [linkUrl, setLinkUrl] = useState('');
+  // 工具栏DOM引用
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  const updateToolbarPosition = useCallback(() => {
-    const editorElement = document.getElementsByClassName(editorClassname)[0];
-    if (!editorElement) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      if (toolbarState !== 'link') {
-        setStyle((style) => ({ ...style, opacity: 0 }));
-      }
-      return;
-    }
-
-    if (!editorElement.contains(selection.anchorNode)) {
-      setStyle((style) => ({ ...style, opacity: 0 }));
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const editorRect = editorElement.getBoundingClientRect();
-    const toolbarHeight = 30;
-    const toolbarWidth = 200;
-    const offset = 10;
-    const mobileBreakpoint = 768;
-
-    const isMobile = window.innerWidth <= mobileBreakpoint;
-
-    let computedTop;
-    if (isMobile) {
-      computedTop =
-        rect.bottom - editorRect.top + editorElement.scrollTop + offset;
-    } else {
-      computedTop =
-        rect.top -
-        editorRect.top +
-        editorElement.scrollTop -
-        toolbarHeight -
-        offset;
-    }
-
-    let computedLeft =
-      rect.left -
-      editorRect.left +
-      editorElement.scrollLeft +
-      rect.width / 2 -
-      toolbarWidth / 2;
-
-    computedLeft = Math.max(
-      0,
-      Math.min(computedLeft, editorElement.clientWidth - toolbarWidth),
-    );
-
-    const viewportWidth = window.innerWidth;
-
-    if (editorRect.left + computedLeft + toolbarWidth > viewportWidth) {
-      computedLeft = viewportWidth - editorRect.left - toolbarWidth - offset;
-    }
-
-    setStyle({
-      top: computedTop,
-      left: Math.max(0, computedLeft),
-      opacity: 1,
-    });
-    setToolbarState('default');
-  }, [toolbarState, editorClassname]);
-
+  // 监听编辑器事件和处理工具栏位置更新
   useEffect(() => {
     if (!editor) return;
     const editorElement =
       document.getElementsByClassName(editorClassname)[0] || undefined;
     if (!editorElement) return;
 
+    // 处理选区变化
     const handleSelectionChange = () => {
       setTimeout(updateToolbarPosition, 0);
     };
 
+    // 处理点击工具栏外部
     const handleClickOutside = (event: MouseEvent) => {
       if (
         toolbarRef.current &&
@@ -219,12 +174,14 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       }
     };
 
+    // 处理ESC键
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setToolbarState('hidden');
       }
     };
 
+    // 添加事件监听器
     document.addEventListener('selectionchange', handleSelectionChange);
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscapeKey);
@@ -233,6 +190,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     editor.on('selectionUpdate', updateToolbarPosition);
     editor.on('transaction', updateToolbarPosition);
 
+    // 清理事件监听器
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('mousedown', handleClickOutside);
@@ -244,34 +202,35 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     };
   }, [updateToolbarPosition, editor]);
 
+  // 定义工具栏按钮
   const toolbarButtons = useMemo(
     () => [
       {
-        ariaLabel: 'Bold',
+        ariaLabel: 'Bold',                 // 粗体按钮
         icon: <BiBold />,
         isActive: () => editor.isActive('bold'),
         action: () => editor.chain().focus().toggleBold().run(),
       },
       {
-        ariaLabel: 'Italic',
+        ariaLabel: 'Italic',               // 斜体按钮
         icon: <BiItalic />,
         isActive: () => editor.isActive('italic'),
         action: () => editor.chain().focus().toggleItalic().run(),
       },
       {
-        ariaLabel: 'Ordered List',
+        ariaLabel: 'Ordered List',         // 有序列表按钮
         icon: <FaListOl />,
         isActive: () => editor.isActive('orderedList'),
         action: () => editor.chain().focus().toggleOrderedList().run(),
       },
       {
-        ariaLabel: 'Unordered List',
+        ariaLabel: 'Unordered List',       // 无序列表按钮
         icon: <FaListUl />,
         isActive: () => editor.isActive('bulletList'),
         action: () => editor.chain().focus().toggleBulletList().run(),
       },
       {
-        ariaLabel: 'Insert Link',
+        ariaLabel: 'Insert Link',          // 插入链接按钮
         icon: <BiLink />,
         isActive: () => editor.isActive('link'),
         action: () => {
@@ -288,6 +247,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     [editor],
   );
 
+  // 默认工具栏组件
   const DefaultToolbar = useCallback(
     () => (
       <>
@@ -311,10 +271,12 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     [toolbarButtons],
   );
 
+  // 添加链接到编辑器
   function addLinkToEditor() {
     if (linkUrl) {
       let href = linkUrl;
       if (!href) return setLinkUrl('');
+      // 确保链接以http://或https://开头
       if (!href?.startsWith('http://') && !href?.startsWith('https://')) {
         href = 'https://' + href;
       }
@@ -322,9 +284,11 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     }
   }
 
+  // 链接工具栏组件
   const LinkToolbar = useCallback(() => {
     return (
       <>
+        {/* 链接输入框 */}
         <Input
           w="full"
           h="full"
@@ -353,6 +317,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           size="sm"
           value={linkUrl}
         />
+        {/* 打开链接按钮 */}
         {!!linkUrl && (
           <IconButton
             h="full"
@@ -372,6 +337,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             size="sm"
           />
         )}
+        {/* 删除链接按钮 */}
         <IconButton
           h="full"
           color={'brand.slate.500'}
@@ -387,6 +353,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           }}
           size="sm"
         />
+        {/* 移动端确认按钮 */}
         <IconButton
           display={{ base: 'block', lg: 'none' }}
           h="full"
@@ -406,10 +373,12 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     );
   }, [editor, linkUrl]);
 
+  // 如果编辑器未初始化或工具栏隐藏，不渲染任何内容
   if (!editor || toolbarState === 'hidden') {
     return null;
   }
 
+  // 渲染工具栏
   return (
     <Box
       pos="absolute"
@@ -422,6 +391,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         transition: 'opacity 0.2s',
       }}
     >
+      {/* 工具栏容器 */}
       <HStack
         gap={0}
         overflow="hidden"
@@ -433,6 +403,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         borderRadius="md"
         shadow="md"
       >
+        {/* 根据工具栏状态显示不同内容 */}
         {toolbarState === 'default' && <DefaultToolbar />}
         {toolbarState === 'link' && <LinkToolbar />}
       </HStack>
