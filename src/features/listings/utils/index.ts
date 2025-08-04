@@ -21,8 +21,8 @@ export const isDeadlineOver = (deadline: string | Date | undefined) =>
   deadline ? dayjs().isAfter(dayjs(deadline)) : false;
 
 export const getRegionTooltipLabel = (
-  _region: string | undefined,
-  _isGrant: boolean = false,
+  region: string | undefined,
+  isGrant: boolean = false,
 ) => {
   return '这个任务对所有人开放';
   // const country = countries.find(
@@ -155,8 +155,8 @@ ${url}
 }
 
 export function userRegionEligibilty(
-  _region: string | undefined,
-  _userLocation: string | undefined,
+  region: string | undefined,
+  userLocation: string | undefined,
 ) {
   return true;
 
