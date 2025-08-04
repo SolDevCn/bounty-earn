@@ -1,13 +1,10 @@
 import { Box } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
+import type { NextPageContext } from 'next';
+import React from 'react';
 
 import { Superteams } from '@/constants/Superteam';
-import {
-  ListingTabs,
-  listingsQuery,
-} from '@/features/listings';
+import { ListingTabs, regionalListingsQuery } from '@/features/listings';
 import { Home } from '@/layouts/Home';
 import { Meta } from '@/layouts/Meta';
 import { getURL } from '@/utils/validUrl';

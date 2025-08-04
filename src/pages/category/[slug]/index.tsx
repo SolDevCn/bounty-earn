@@ -4,10 +4,7 @@ import type { NextPageContext } from 'next';
 import { useRouter } from 'next/router';
 import { useMemo } from 'react';
 
-import {
-  listingsQuery,
-  ListingTabs,
-} from '@/features/listings';
+import { listingsQuery, ListingTabs } from '@/features/listings';
 import { titlesForCN } from '@/interface/skills';
 import { Home } from '@/layouts/Home';
 import { Meta } from '@/layouts/Meta';
@@ -29,8 +26,6 @@ function ListingCategoryPage({ slug }: { slug: string }) {
       deadline,
     }),
   );
-
-
 
   const titlesForSlugs: { [key in SlugKeys]: string } = {
     design: '设计 赏金和任务 | Solar Earn',
