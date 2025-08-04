@@ -62,15 +62,6 @@ export const Footer = () => {
 
   const about = [
     {
-      text: '常见问题',
-      href: '/guide.pdf',
-    },
-    {
-      text: '条款',
-      href: '/terms.pdf',
-    },
-    { text: '隐私政策', href: '/policy.pdf' },
-    {
       text: '联系我们',
       href: `mailto:${SolarMail}`,
     },
@@ -114,7 +105,7 @@ export const Footer = () => {
             w={{ base: '100%', md: 'auto' }}
           >
             <FooterColumn title="项目机会" links={opportunities} />
-            <FooterColumn title="人才类型" links={categories} />
+            <FooterColumn title="任务类型" links={categories} />
             <FooterColumn title="关于" links={about} />
           </Flex>
         </Flex>

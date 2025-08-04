@@ -1,17 +1,10 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NextPageContext } from 'next';
 import React from 'react';
 
-import { EmptySection } from '@/components/shared/EmptySection';
-import { Loading } from '@/components/shared/Loading';
 import { Superteams } from '@/constants/Superteam';
-import { GrantsCard } from '@/features/grants';
-import {
-  ListingSection,
-  ListingTabs,
-  regionalListingsQuery,
-} from '@/features/listings';
+import { ListingTabs, regionalListingsQuery } from '@/features/listings';
 import { Home } from '@/layouts/Home';
 import { Meta } from '@/layouts/Meta';
 import { getURL } from '@/utils/validUrl';
@@ -46,8 +39,8 @@ const RegionsPage = ({
           <ListingTabs
             bounties={listings?.bounties}
             isListingsLoading={isListingsLoading}
-            emoji="/assets/home/emojis/moneyman.webp"
-            title="Freelance Gigs"
+            emoji=""
+            title="自由职业机会"
             showViewAll
             viewAllLink={`/regions/${slug}/all`}
             take={10}

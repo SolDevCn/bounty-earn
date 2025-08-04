@@ -117,6 +117,11 @@ export const useToggleWinner = (
           return newRemainings;
         });
       }
+
+      // 强制重新获取数据以确保数据一致性
+      queryClient.invalidateQueries({
+        queryKey: ['sponsor-submissions', bounty?.slug],
+      });
     },
     onError: (error) => {
       console.error('Failed to toggle winner:', error);
