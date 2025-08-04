@@ -59,6 +59,11 @@ export const useRejectSubmissions = (slug: string) => {
         );
       });
 
+      // 强制重新获取数据以确保数据一致性
+      queryClient.invalidateQueries({
+        queryKey: ['sponsor-submissions', slug],
+      });
+
       const updatedSubmission = queryClient
         .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug])
         ?.find((submission) => submissionIds.includes(submission.id));

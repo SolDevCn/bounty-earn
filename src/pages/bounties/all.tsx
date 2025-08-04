@@ -21,12 +21,7 @@ export default function AllBountiesPage() {
   return (
     <Home type="listing">
       <Box w={'100%'} pr={{ base: 0, lg: 6 }}>
-        <ListingSection
-          type="bounties"
-          title="赏金任务"
-          sub="Bite sized tasks for freelancers"
-          emoji="/assets/home/emojis/moneyman.webp"
-        >
+        <ListingSection type="bounties" title="赏金任务" sub="" emoji="">
           {isLoading &&
             Array.from({ length: 8 }, (_, index) => (
               <ListingCardSkeleton key={index} />

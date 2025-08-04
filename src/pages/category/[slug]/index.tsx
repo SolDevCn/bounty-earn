@@ -1,14 +1,10 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NextPageContext } from 'next';
 import { useRouter } from 'next/router';
 import { useMemo } from 'react';
 
-import { EmptySection } from '@/components/shared/EmptySection';
-import { Loading } from '@/components/shared/Loading';
-import { GrantsCard, grantsQuery } from '@/features/grants';
 import {
-  ListingSection,
   listingsQuery,
   ListingTabs,
 } from '@/features/listings';
@@ -34,9 +30,7 @@ function ListingCategoryPage({ slug }: { slug: string }) {
     }),
   );
 
-  const { data: grants, isLoading: isGrantsLoading } = useQuery(
-    grantsQuery({ order: 'asc', take: 10 }),
-  );
+
 
   const titlesForSlugs: { [key in SlugKeys]: string } = {
     design: '设计 赏金和任务 | Solar Earn',
@@ -65,8 +59,8 @@ function ListingCategoryPage({ slug }: { slug: string }) {
         <ListingTabs
           bounties={listingsData ?? []}
           isListingsLoading={isListingsLoading}
-          emoji="/assets/home/emojis/moneyman.webp"
-          title={`${titlesForCN[formattedSlug]} 机会`}
+          emoji=""
+          title={`${titlesForCN[formattedSlug as keyof typeof titlesForCN]} 机会`}
           viewAllLink={`/category/${slug}/all`}
           showViewAll
           take={10}

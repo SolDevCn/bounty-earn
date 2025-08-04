@@ -21,8 +21,8 @@ export const isDeadlineOver = (deadline: string | Date | undefined) =>
   deadline ? dayjs().isAfter(dayjs(deadline)) : false;
 
 export const getRegionTooltipLabel = (
-  region: string | undefined,
-  isGrant: boolean = false,
+  _region: string | undefined,
+  _isGrant: boolean = false,
 ) => {
   return '这个任务对所有人开放';
   // const country = countries.find(
@@ -69,8 +69,8 @@ export const listingStatusCN = {
   'In Progress': '进行中',
   'Fndn to Pay': 'Fndn to Pay',
   'Payment Pending': '等待支付',
-  Completed: '完成',
-  'In Review': '检查中',
+  Completed: '已完成',
+  'In Review': '审核中',
 };
 
 export const getListingStatus = (
@@ -155,8 +155,8 @@ ${url}
 }
 
 export function userRegionEligibilty(
-  region: string | undefined,
-  userLocation: string | undefined,
+  _region: string | undefined,
+  _userLocation: string | undefined,
 ) {
   return true;
 
