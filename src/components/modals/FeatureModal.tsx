@@ -60,6 +60,11 @@ export const FeatureModal = ({
     shouldShowModal();
   }, [user, router.pathname, latestActiveSlug, isSponsorsRoute, forceOpen]);
 
+  // TODO: 临时关闭 Scout 功能弹窗 - 项目初期阶段
+  // 计划在未来版本中重新启用此功能
+  // 移除下面这行代码即可恢复 Scout 功能介绍弹窗
+  return null;
+
   const handleClose = () => {
     setIsOpen(false);
   };

@@ -232,7 +232,7 @@ const CreateSponsor = () => {
                     fontWeight={600}
                     htmlFor={'slug'}
                   >
-                    公司 Slug
+                    公司 Username
                   </FormLabel>
                   <Input
                     w={'full'}
@@ -535,11 +535,11 @@ const CreateSponsor = () => {
                 )}
                 {(validationErrorMessage ||
                   sponsorNameValidationErrorMessage) && (
-                    <Text align={'center'} color="yellow.500">
-                      如果您想访问现有的帐户，请在 Telegram 上联系我们
-                      @cryptosheep1
-                    </Text>
-                  )}
+                  <Text align={'center'} color="yellow.500">
+                    如果您想访问现有的帐户，请在 Telegram 上联系我们
+                    @cryptosheep1
+                  </Text>
+                )}
               </Box>
               <Button
                 className="ph-no-capture"
