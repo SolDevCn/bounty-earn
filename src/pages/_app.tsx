@@ -75,9 +75,11 @@ function MyApp({ Component, pageProps }: any) {
     if (router.query.loginState === 'signedIn' && user) {
       posthog.identify(user.email);
       setUser({ id: user.id, email: user.email });
-      const url = new URL(window.location.href);
-      url.searchParams.delete('loginState');
-      window.history.replaceState(null, '', url.href);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('loginState');
+        window.history.replaceState(null, '', url.href);
+      }
     }
   }, [router.query.loginState, user, posthog]);
 

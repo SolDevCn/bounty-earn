@@ -20,7 +20,16 @@ const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        if (typeof window !== 'undefined') {
+          return localStorage;
+        }
+        return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        };
+      }),
     },
   ),
 );
@@ -72,7 +81,9 @@ export const useLogout = () => {
   return () => {
     queryClient.setQueryData(['user'], null);
     setUser(null);
-    localStorage.removeItem('user-storage');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user-storage');
+    }
     signOut();
   };
 };
