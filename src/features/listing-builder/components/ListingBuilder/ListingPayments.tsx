@@ -60,11 +60,7 @@ import {
 
 import { useListingFormStore } from '../../store';
 import { type ListingFormType } from '../../types';
-import {
-  caculateBonus,
-  calculateTotalOfArray,
-  formatTotalPrice,
-} from '../../utils';
+import { calculateTotalOfArray, formatTotalPrice } from '../../utils';
 import { ListingFormLabel, ListingTooltip } from './Form';
 
 interface Token {
@@ -474,10 +470,7 @@ export const ListingPayments = ({
     cleanRewards(rewards, true).length + (maxBonusSpots ?? 0);
 
   const calculateTotalReward = () =>
-    calculateTotalOfArray([
-      ...cleanRewardPrizes(rewards, true),
-      caculateBonus(maxBonusSpots || 0, rewards?.[BONUS_REWARD_POSITION] || 0),
-    ]);
+    calculateTotalOfArray([...cleanRewardPrizes(rewards, true)]);
 
   useEffect(() => {
     if (compensationType === 'fixed' && type !== 'project')
@@ -987,18 +980,7 @@ export const ListingPayments = ({
                           )}{' '}
                           {selectedToken?.tokenSymbol}{' '}
                         </Text>
-                        xxx 每位获得 (total bonus of{' '}
-                        <Text pl={1} fontWeight={700}>
-                          {formatTotalPrice(
-                            caculateBonus(
-                              maxBonusSpots,
-                              rewards?.[BONUS_REWARD_POSITION],
-                            ),
-                          )}{' '}
-                          {selectedToken?.tokenSymbol}
-                        </Text>
-                        )
-                      </FormHelperText>
+                        </FormHelperText>
                     )}
                 </FormControl>
               ))}
