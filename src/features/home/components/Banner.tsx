@@ -53,28 +53,26 @@ export function HomeBanner() {
           }}
         />
       </Show>
-      <Text
-        pos="relative"
+      <Box
+        pos="absolute"
+        top="50%"
+        left="50%"
+        transform="translate(-50%, -50%)"
         zIndex={1}
-        color="white"
-        fontSize={{ base: '2xl', md: '25px' }}
-        fontWeight={'700'}
-        lineHeight={'120%'}
+        textAlign="center"
+        w="100%"
+        px={4}
       >
-        为你的 Solana 项目发掘人才
-        <br />
-      </Text>
-      <Text
-        pos="relative"
-        zIndex={1}
-        maxW={{ base: '100%', md: '30rem' }}
-        mt={{ base: '2', md: '2' }}
-        color={'white'}
-        fontSize={{ base: '13px', md: 'lg' }}
-        lineHeight={'130%'}
-      >
-        Solar 華語區人才網络
-      </Text>
+        <Text
+          color="white"
+          fontSize={{ base: '2xl', md: '25px' }}
+          fontWeight={'700'}
+          lineHeight={'120%'}
+          textShadow="0 2px 4px rgba(0,0,0,0.8)"
+        >
+          为你的 Solana 项目发掘人才
+        </Text>
+      </Box>
     </Box>
   );
 }

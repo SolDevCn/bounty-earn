@@ -22,6 +22,6 @@ export const submissionsQuery = (slug: string, isHackathon?: boolean) =>
     queryKey: ['sponsor-submissions', slug],
     queryFn: () => fetchSubmissions(slug, isHackathon),
     enabled: !!slug,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 5 * 1000, // 5 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
