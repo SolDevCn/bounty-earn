@@ -23,6 +23,7 @@ import axios from 'axios';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 import RichTextInputWithHelper from '@/components/Form/RichTextInput';
 import {
@@ -183,22 +184,29 @@ export const SubmissionModal = ({
       if (!editMode && latestSubmissionNumber % 3 !== 0) onSurveyOpen();
 
       reset();
-      await queryClient.invalidateQueries({
-        queryKey: userSubmissionQuery(id!, user!.id).queryKey,
-      });
+      setIsLoading(false);
+      
+      // Invalidate queries to ensure fresh data
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: userSubmissionQuery(id!, user!.id).queryKey,
+        }),
+        refetchUser(),
+        ...(editMode ? [] : [
+          queryClient.invalidateQueries({
+            queryKey: submissionCountQuery(id!).queryKey,
+          })
+        ])
+      ]);
 
-      await refetchUser();
-
-      if (!editMode) {
-        await queryClient.invalidateQueries({
-          queryKey: submissionCountQuery(id!).queryKey,
-        });
-      }
-
+      // Show success message
+      toast.success(editMode ? '修改成功！' : '提交成功！');
+      
       onClose();
     } catch (e) {
       setError('Sorry! Please try again or contact support.');
       setIsLoading(false);
+      console.error('Submission error:', e);
     }
   };
 

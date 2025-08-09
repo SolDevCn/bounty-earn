@@ -41,11 +41,17 @@ export const useToggleWinner = (
       if (!response.data) throw new Error('Failed to toggle winner');
       return response.data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.setQueryData<SubmissionWithUser[]>(
-        ['sponsor-submissions', bounty?.slug],
-        (old) =>
-          old?.map((submission) =>
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['sponsor-submissions', bounty?.slug] });
+      
+      // Snapshot the previous value
+      const previousSubmissions = queryClient.getQueryData<SubmissionWithUser[]>(['sponsor-submissions', bounty?.slug]);
+      
+      // Optimistically update to the new value
+      if (previousSubmissions) {
+        queryClient.setQueryData(['sponsor-submissions', bounty?.slug],
+          previousSubmissions.map((submission) =>
             submission.id === variables.id
               ? {
                   ...submission,
@@ -53,9 +59,11 @@ export const useToggleWinner = (
                   winnerPosition: variables.winnerPosition ?? undefined,
                 }
               : submission,
-          ),
-      );
+          )
+        );
+      }
 
+      // Calculate remaining positions optimistically
       const submissionIndex = submissions.findIndex(
         (s) => s.id === variables.id,
       );
@@ -117,10 +125,20 @@ export const useToggleWinner = (
           return newRemainings;
         });
       }
+      
+      return { previousSubmissions };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousSubmissions) {
+        queryClient.setQueryData(['sponsor-submissions', bounty?.slug], context.previousSubmissions);
+      }
       console.error('Failed to toggle winner:', error);
       toast.error('失败，请重试');
+    },
+    onSuccess: () => {
+      // Invalidate queries to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ['sponsor-submissions', bounty?.slug] });
     },
   });
 };

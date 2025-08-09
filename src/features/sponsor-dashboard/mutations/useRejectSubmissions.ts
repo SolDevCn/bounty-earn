@@ -24,47 +24,41 @@ export const useRejectSubmissions = (slug: string) => {
       }
     },
     onMutate: async (submissionIds) => {
-      queryClient.setQueryData(['sponsor-submissions', slug], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['sponsor-submissions', slug] });
+      
+      // Snapshot the previous value
+      const previousSubmissions = queryClient.getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug]);
+      
+      // Optimistically update to the new value
+      if (previousSubmissions) {
+        queryClient.setQueryData(['sponsor-submissions', slug], 
+          previousSubmissions.map((submission) =>
+            submissionIds.includes(submission.id)
+              ? {
+                  ...submission,
+                  status: SubmissionStatus.Rejected,
+                }
+              : submission,
+          )
         );
-      });
+      }
 
-      const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug])
-        ?.find((submission) => submissionIds.includes(submission.id));
-
-      setSelectedSubmission(updatedSubmission);
+      // Clear selections
       setSelectedSubmissionIds(new Set());
+      
+      return { previousSubmissions };
     },
-    onError: () => {
+    onError: (error, submissionIds, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousSubmissions) {
+        queryClient.setQueryData(['sponsor-submissions', slug], context.previousSubmissions);
+      }
       toast.error('失败，请重试');
     },
-    onSuccess: (_, submissionIds) => {
-      queryClient.setQueryData(['sponsor-submissions', slug], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
-        );
-      });
-
-      const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug])
-        ?.find((submission) => submissionIds.includes(submission.id));
-
-      setSelectedSubmission(updatedSubmission);
-      setSelectedSubmissionIds(new Set());
+    onSuccess: () => {
+      // Invalidate queries to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ['sponsor-submissions', slug] });
       toast.success('成功');
     },
   });
