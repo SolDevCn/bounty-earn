@@ -66,6 +66,11 @@ export const SelectLabel = ({ listingSlug }: Props) => {
           ? { ...prev, label: variables.label }
           : prev,
       );
+
+      // Invalidate queries to ensure data consistency
+      queryClient.invalidateQueries({
+        queryKey: ['sponsor-submissions', listingSlug],
+      });
     },
     onError: (e) => {
       console.log(e);
@@ -99,7 +104,7 @@ export const SelectLabel = ({ listingSlug }: Props) => {
             textTransform={'capitalize'}
             whiteSpace={'nowrap'}
           >
-            {talentMapCN[selectedSubmission?.label] || '选择'}
+            {selectedSubmission?.label ? talentMapCN[selectedSubmission.label] : '选择'}
           </TagLabel>
         </Tag>
       </MenuButton>
@@ -124,7 +129,7 @@ export const SelectLabel = ({ listingSlug }: Props) => {
                 textTransform={'capitalize'}
                 whiteSpace={'nowrap'}
               >
-                {talentMapCN[option.label]}
+                {talentMapCN[option.label as keyof typeof talentMapCN]}
               </TagLabel>
             </Tag>
           </MenuItem>
