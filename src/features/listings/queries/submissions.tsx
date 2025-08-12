@@ -1,14 +1,15 @@
-import { queryOptions } from '@tanstack/react-query';
 import axios from 'axios';
+import { queryOptions } from '@tanstack/react-query';
+
+import { QUERY_KEYS, QUERY_OPTIONS } from '@/lib/cache';
+import { type SubmissionWithUser } from '@/interface/submission';
+
+import { type Listing } from '../types';
 
 interface ListingSubmissionParams {
   slug: string;
   isWinner?: boolean;
 }
-
-import { type SubmissionWithUser } from '@/interface/submission';
-
-import { type Listing } from '../types';
 
 const fetchListingSubmissions = async (
   params: ListingSubmissionParams,
@@ -26,6 +27,7 @@ const fetchListingSubmissions = async (
 
 export const listingSubmissionsQuery = (params: ListingSubmissionParams) =>
   queryOptions({
-    queryKey: ['listing-submissions', params],
+    queryKey: QUERY_KEYS.LISTING_SUBMISSIONS(params),
     queryFn: () => fetchListingSubmissions(params),
+    ...QUERY_OPTIONS.FAST,
   });

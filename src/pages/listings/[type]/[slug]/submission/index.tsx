@@ -1,44 +1,32 @@
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type { GetServerSideProps } from 'next';
-import React, { useState } from 'react';
+import React from 'react';
 
-import { type Listing, SubmissionList } from '@/features/listings';
-import type { SubmissionWithUser } from '@/interface/submission';
+import { type Listing, SubmissionList, listingSubmissionsQuery } from '@/features/listings';
 import { ListingPageLayout } from '@/layouts/Listing';
 import { getURL } from '@/utils/validUrl';
 
 const SubmissionPage = ({
   slug,
   bounty: bountyB,
-  submission: submissionB,
 }: {
   slug: string;
   bounty: Listing;
-  submission: SubmissionWithUser[];
 }) => {
-  const [bounty] = useState<Listing>(bountyB);
-  const [submission, setSubmission] =
-    useState<SubmissionWithUser[]>(submissionB);
-
-  const resetSubmissions = async () => {
-    try {
-      const bountyDetails = await axios.get(
-        `/api/listings/submissions/${slug}`,
-      );
-      setSubmission(bountyDetails.data.submission);
-    } catch (e) {
-      console.log(e);
-    }
-  };
+  const { data: submissionsData, refetch } = useQuery({
+    ...listingSubmissionsQuery({ slug }),
+    initialData: { bounty: bountyB, submission: [] },
+  });
 
   return (
-    <ListingPageLayout bounty={bounty}>
-      {bounty && submission && (
+    <ListingPageLayout bounty={submissionsData?.bounty || bountyB}>
+      {submissionsData?.bounty && submissionsData.submission && (
         <SubmissionList
-          bounty={bounty}
-          setUpdate={resetSubmissions}
-          submissions={submission}
-          endTime={bounty.deadline as string}
+          bounty={submissionsData.bounty}
+          setUpdate={() => refetch()}
+          submissions={submissionsData.submission}
+          endTime={submissionsData.bounty.deadline as string}
         />
       )}
     </ListingPageLayout>
@@ -64,8 +52,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   return {
     props: {
       slug,
-      bounty: bountyData.bounty,
-      submission: bountyData.submission,
+      bounty: bountyData?.bounty || null,
     },
   };
 };
