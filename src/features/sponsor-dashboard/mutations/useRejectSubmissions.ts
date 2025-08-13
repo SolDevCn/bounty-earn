@@ -8,7 +8,7 @@ import { type SubmissionWithUser } from '@/interface/submission';
 
 import { selectedSubmissionAtom, selectedSubmissionIdsAtom } from '..';
 
-export const useRejectSubmissions = (slug: string) => {
+export const useRejectSubmissions = (slug: string, isHackathon?: boolean) => {
   const queryClient = useQueryClient();
   const setSelectedSubmission = useSetAtom(selectedSubmissionAtom);
   const setSelectedSubmissionIds = useSetAtom(selectedSubmissionIdsAtom);
@@ -24,7 +24,20 @@ export const useRejectSubmissions = (slug: string) => {
       }
     },
     onMutate: async (submissionIds) => {
-      queryClient.setQueryData(['sponsor-submissions', slug], (old: any) => {
+      // Update both regular and hackathon queries
+      queryClient.setQueryData(['sponsor-submissions', slug, false], (old: any) => {
+        if (!old) return old;
+        return old.map((submission: SubmissionWithUser) =>
+          submissionIds.includes(submission.id)
+            ? {
+                ...submission,
+                status: SubmissionStatus.Rejected,
+              }
+            : submission,
+        );
+      });
+      
+      queryClient.setQueryData(['sponsor-submissions', slug, true], (old: any) => {
         if (!old) return old;
         return old.map((submission: SubmissionWithUser) =>
           submissionIds.includes(submission.id)
@@ -37,7 +50,7 @@ export const useRejectSubmissions = (slug: string) => {
       });
 
       const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug])
+        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug, isHackathon ?? false])
         ?.find((submission) => submissionIds.includes(submission.id));
 
       setSelectedSubmission(updatedSubmission);
@@ -47,7 +60,20 @@ export const useRejectSubmissions = (slug: string) => {
       toast.error('失败，请重试');
     },
     onSuccess: (_, submissionIds) => {
-      queryClient.setQueryData(['sponsor-submissions', slug], (old: any) => {
+      // Update both regular and hackathon queries
+      queryClient.setQueryData(['sponsor-submissions', slug, false], (old: any) => {
+        if (!old) return old;
+        return old.map((submission: SubmissionWithUser) =>
+          submissionIds.includes(submission.id)
+            ? {
+                ...submission,
+                status: SubmissionStatus.Rejected,
+              }
+            : submission,
+        );
+      });
+      
+      queryClient.setQueryData(['sponsor-submissions', slug, true], (old: any) => {
         if (!old) return old;
         return old.map((submission: SubmissionWithUser) =>
           submissionIds.includes(submission.id)
@@ -60,7 +86,7 @@ export const useRejectSubmissions = (slug: string) => {
       });
 
       const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug])
+        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug, isHackathon ?? false])
         ?.find((submission) => submissionIds.includes(submission.id));
 
       setSelectedSubmission(updatedSubmission);

@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import axios from 'axios';
 
+import { QUERY_OPTIONS, QUERY_KEYS } from '@/lib/cache';
 import { type SubmissionWithUser } from '@/interface/submission';
 
 const fetchSubmissions = async (
@@ -18,10 +19,8 @@ const fetchSubmissions = async (
 
 export const submissionsQuery = (slug: string, isHackathon?: boolean) =>
   queryOptions({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: ['sponsor-submissions', slug],
+    queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, isHackathon),
     queryFn: () => fetchSubmissions(slug, isHackathon),
     enabled: !!slug,
-    staleTime: 5 * 1000, // 5 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_OPTIONS.FAST,
   });

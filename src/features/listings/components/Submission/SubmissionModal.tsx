@@ -32,7 +32,8 @@ import {
 import { SolarMail, tokenList } from '@/constants';
 import { useUser } from '@/store/user';
 
-import { submissionCountQuery } from '../../queries';
+import { CACHE_INVALIDATION } from '@/lib/cache';
+import { listingSubmissionsQuery, submissionCountQuery } from '../../queries';
 import { userSubmissionQuery } from '../../queries/user-submission-status';
 import { type Listing } from '../../types';
 import { SubmissionTerms } from './SubmissionTerms';
@@ -190,9 +191,8 @@ export const SubmissionModal = ({
       await refetchUser();
 
       if (!editMode) {
-        await queryClient.invalidateQueries({
-          queryKey: submissionCountQuery(id!).queryKey,
-        });
+        // Invalidate all listing-related cache
+        CACHE_INVALIDATION.LISTING(queryClient, id!);
       }
 
       onClose();

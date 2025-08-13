@@ -4,6 +4,7 @@ import { useAtom } from 'jotai';
 import { toast } from 'sonner';
 
 import { BONUS_REWARD_POSITION } from '@/constants';
+import { CACHE_INVALIDATION, QUERY_KEYS } from '@/lib/cache';
 import { type Listing, type Rewards } from '@/features/listings';
 import { type SubmissionWithUser } from '@/interface/submission';
 
@@ -42,8 +43,9 @@ export const useToggleWinner = (
       return response.data;
     },
     onSuccess: (_, variables) => {
+      // Optimistic updates for both regular and hackathon queries
       queryClient.setQueryData<SubmissionWithUser[]>(
-        ['sponsor-submissions', bounty?.slug],
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
         (old) =>
           old?.map((submission) =>
             submission.id === variables.id
@@ -55,6 +57,25 @@ export const useToggleWinner = (
               : submission,
           ),
       );
+      
+      queryClient.setQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, true),
+        (old) =>
+          old?.map((submission) =>
+            submission.id === variables.id
+              ? {
+                  ...submission,
+                  isWinner: variables.isWinner,
+                  winnerPosition: variables.winnerPosition ?? undefined,
+                }
+              : submission,
+          ),
+      );
+
+      // Invalidate sponsor dashboard cache
+      if (bounty?.slug) {
+        CACHE_INVALIDATION.SPONSOR_DASHBOARD(queryClient, bounty.slug);
+      }
 
       const submissionIndex = submissions.findIndex(
         (s) => s.id === variables.id,

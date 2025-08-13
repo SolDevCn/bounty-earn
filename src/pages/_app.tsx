@@ -45,7 +45,21 @@ const ReactQueryDevtools = dynamic(
   { ssr: false },
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000, // 1 second for real-time updates
+      gcTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error: any) => {
+        // Don't retry on 404 or 401 errors
+        if (error?.status === 404 || error?.status === 401) return false;
+        return failureCount < 3;
+      },
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 if (typeof window !== 'undefined') {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
