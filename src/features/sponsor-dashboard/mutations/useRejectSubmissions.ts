@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useSetAtom } from 'jotai';
 import { toast } from 'sonner';
 
+import { CACHE_INVALIDATION, QUERY_KEYS } from '@/lib/cache';
 import { type SubmissionWithUser } from '@/interface/submission';
 
 import { selectedSubmissionAtom, selectedSubmissionIdsAtom } from '..';
@@ -24,74 +25,100 @@ export const useRejectSubmissions = (slug: string, isHackathon?: boolean) => {
       }
     },
     onMutate: async (submissionIds) => {
-      // Update both regular and hackathon queries
-      queryClient.setQueryData(['sponsor-submissions', slug, false], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
-        );
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, false),
       });
-      
-      queryClient.setQueryData(['sponsor-submissions', slug, true], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
-        );
+      await queryClient.cancelQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, true),
       });
 
+      // Snapshot the previous value
+      const previousSubmissionsFalse = queryClient.getQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, false),
+      );
+      const previousSubmissionsTrue = queryClient.getQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, true),
+      );
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, false),
+        (old) =>
+          old?.map((submission) =>
+            submissionIds.includes(submission.id)
+              ? {
+                  ...submission,
+                  status: SubmissionStatus.Rejected,
+                }
+              : submission,
+          ),
+      );
+      
+      queryClient.setQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, true),
+        (old) =>
+          old?.map((submission) =>
+            submissionIds.includes(submission.id)
+              ? {
+                  ...submission,
+                  status: SubmissionStatus.Rejected,
+                }
+              : submission,
+          ),
+      );
+
       const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug, isHackathon ?? false])
+        .getQueryData<SubmissionWithUser[]>(QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, isHackathon ?? false))
         ?.find((submission) => submissionIds.includes(submission.id));
 
       setSelectedSubmission(updatedSubmission);
       setSelectedSubmissionIds(new Set());
-    },
-    onError: () => {
-      toast.error('失败，请重试');
+
+      return { previousSubmissionsFalse, previousSubmissionsTrue };
     },
     onSuccess: (_, submissionIds) => {
-      // Update both regular and hackathon queries
-      queryClient.setQueryData(['sponsor-submissions', slug, false], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
-        );
-      });
-      
-      queryClient.setQueryData(['sponsor-submissions', slug, true], (old: any) => {
-        if (!old) return old;
-        return old.map((submission: SubmissionWithUser) =>
-          submissionIds.includes(submission.id)
-            ? {
-                ...submission,
-                status: SubmissionStatus.Rejected,
-              }
-            : submission,
-        );
-      });
+      // Show success message
+      toast.success(`已拒绝 ${submissionIds.length} 个提交`);
 
+      // Invalidate all dashboard data to ensure consistency
+      CACHE_INVALIDATION.ALL_DASHBOARD(queryClient, slug);
+
+      // Update local state
       const updatedSubmission = queryClient
-        .getQueryData<SubmissionWithUser[]>(['sponsor-submissions', slug, isHackathon ?? false])
+        .getQueryData<SubmissionWithUser[]>(QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, isHackathon ?? false))
         ?.find((submission) => submissionIds.includes(submission.id));
 
       setSelectedSubmission(updatedSubmission);
       setSelectedSubmissionIds(new Set());
-      toast.success('成功');
+    },
+    onError: (error, submissionIds, context) => {
+      console.error('Failed to reject submissions:', error);
+      
+      // Rollback to the previous value
+      if (context?.previousSubmissionsFalse !== undefined) {
+        queryClient.setQueryData(
+          QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, false),
+          context.previousSubmissionsFalse,
+        );
+      }
+      if (context?.previousSubmissionsTrue !== undefined) {
+        queryClient.setQueryData(
+          QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, true),
+          context.previousSubmissionsTrue,
+        );
+      }
+      
+      toast.error('操作失败，请重试');
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, false),
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(slug, true),
+      });
     },
   });
 };

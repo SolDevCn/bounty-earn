@@ -15,6 +15,8 @@ import React, { useEffect } from 'react';
 import { useUser } from '@/store/user';
 import { fontMono, fontSans, fontSerif } from '@/theme/fonts';
 import { getURL } from '@/utils/validUrl';
+import { GlobalLoading } from '@/components/shared/LoadingComponents';
+import { GlobalErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 import theme from '../config/chakra.config';
 
@@ -48,7 +50,7 @@ const ReactQueryDevtools = dynamic(
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000, // 1 second for real-time updates
+      staleTime: 30 * 1000, // 30 seconds (more conservative)
       gcTime: 5 * 60 * 1000, // 5 minutes
       retry: (failureCount, error: any) => {
         // Don't retry on 404 or 401 errors
@@ -57,6 +59,14 @@ const queryClient = new QueryClient({
       },
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      refetchOnMount: true,
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on 404 or 401 errors
+        if (error?.status === 404 || error?.status === 401) return false;
+        return failureCount < 2;
+      },
     },
   },
 });
@@ -100,13 +110,16 @@ function MyApp({ Component, pageProps }: any) {
   return (
     <>
       <NextTopLoader color="#6366F1" showSpinner={false} />
-      {isDashboardRoute ? (
-        <SolanaWalletProvider>
+      <GlobalLoading overlay={true} />
+      <GlobalErrorBoundary>
+        {isDashboardRoute ? (
+          <SolanaWalletProvider>
+            <Component {...pageProps} key={router.asPath} />
+          </SolanaWalletProvider>
+        ) : (
           <Component {...pageProps} key={router.asPath} />
-        </SolanaWalletProvider>
-      ) : (
-        <Component {...pageProps} key={router.asPath} />
-      )}
+        )}
+      </GlobalErrorBoundary>
       <Toaster position="bottom-right" richColors />
     </>
   );

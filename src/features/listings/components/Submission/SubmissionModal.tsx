@@ -35,6 +35,7 @@ import { useUser } from '@/store/user';
 import { CACHE_INVALIDATION } from '@/lib/cache';
 import { listingSubmissionsQuery, submissionCountQuery } from '../../queries';
 import { userSubmissionQuery } from '../../queries/user-submission-status';
+import { useSubmission } from '../../hooks/useSubmission';
 import { type Listing } from '../../types';
 import { SubmissionTerms } from './SubmissionTerms';
 
@@ -79,10 +80,11 @@ export const SubmissionModal = ({
 
   const isProject = type === 'project';
   const isHackathon = type === 'hackathon';
-  const [isLoading, setIsLoading] = useState(false);
   const [isTOSModalOpen, setIsTOSModalOpen] = useState(false);
-  const [error, setError] = useState<any>('');
   const [askError, setAskError] = useState('');
+  
+  // Use the optimized submission hook
+  const { submitSubmission, isSubmitting } = useSubmission(id!, editMode);
   const {
     register,
     control,
@@ -144,32 +146,30 @@ export const SubmissionModal = ({
     if (user?.publicKey) setValue('publicKey', user?.publicKey);
   }, [user]);
 
-  const submitSubmissions = async (data: any) => {
+  const handleSubmitSubmission = async (data: any) => {
     posthog.capture('confirmed_submission');
-    setIsLoading(true);
+    
+    const { applicationLink, tweetLink, otherInfo, ask, ...answers } = data;
+    const eligibilityAnswers =
+      eligibility?.map((q) => ({
+        question: q.question,
+        answer: answers[`eligibility-${q.order}`],
+      })) ?? [];
+
+    const submissionData = {
+      listingId: id!,
+      link: applicationLink || '',
+      tweet: tweetLink || '',
+      otherInfo: otherInfo || '',
+      ask: ask || null,
+      eligibilityAnswers: eligibilityAnswers?.length
+        ? eligibilityAnswers
+        : null,
+    };
+
     try {
-      const { applicationLink, tweetLink, otherInfo, ask, ...answers } = data;
-      const eligibilityAnswers =
-        eligibility?.map((q) => ({
-          question: q.question,
-          answer: answers[`eligibility-${q.order}`],
-        })) ?? [];
-
-      const submissionEndpoint = editMode
-        ? '/api/submission/update/'
-        : '/api/submission/create/';
-
-      await axios.post(submissionEndpoint, {
-        listingId: id,
-        link: applicationLink || '',
-        tweet: tweetLink || '',
-        otherInfo: otherInfo || '',
-        ask: ask || null,
-        eligibilityAnswers: eligibilityAnswers?.length
-          ? eligibilityAnswers
-          : null,
-      });
-
+      await submitSubmission(submissionData);
+      
       const hideEasterEggFromSponsorIds = [
         '53cbd2eb-14e5-4b8a-b6fe-e18e0c885145', // network schoool
       ];
@@ -184,21 +184,11 @@ export const SubmissionModal = ({
       if (!editMode && latestSubmissionNumber % 3 !== 0) onSurveyOpen();
 
       reset();
-      await queryClient.invalidateQueries({
-        queryKey: userSubmissionQuery(id!, user!.id).queryKey,
-      });
-
       await refetchUser();
-
-      if (!editMode) {
-        // Invalidate all listing-related cache
-        CACHE_INVALIDATION.LISTING(queryClient, id!);
-      }
-
       onClose();
-    } catch (e) {
-      setError('Sorry! Please try again or contact support.');
-      setIsLoading(false);
+    } catch (error) {
+      // Error is handled by the hook
+      console.error('Submission failed:', error);
     }
   };
 
@@ -268,7 +258,7 @@ export const SubmissionModal = ({
           <form
             style={{ width: '100%' }}
             onSubmit={handleSubmit((e) => {
-              submitSubmissions(e);
+              handleSubmitSubmission(e);
             })}
           >
             <VStack gap={4} mb={5}>
@@ -424,18 +414,11 @@ export const SubmissionModal = ({
                 </FormControl>
               )}
             </VStack>
-            {!!error && (
-              <Text align="center" mb={2} color="red">
-                提交时出现错误
-                <br />
-                请联系{SolarMail}
-              </Text>
-            )}
             <Button
               className="ph-no-capture"
               w={'full'}
               isDisabled={isTemplate || listing.status === 'PREVIEW'}
-              isLoading={!!isLoading}
+              isLoading={isSubmitting}
               loadingText="提交中"
               type="submit"
               variant="solid"

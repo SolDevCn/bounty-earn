@@ -18,6 +18,7 @@ import {
   userRegionEligibilty,
 } from '@/features/listings';
 import { useUser } from '@/store/user';
+import { QUERY_OPTIONS } from '@/lib/cache';
 
 import { userSubmissionQuery } from '../../queries/user-submission-status';
 import { EasterEgg } from './EasterEgg';
@@ -55,7 +56,8 @@ export const SubmissionActionButton = ({
   const { data: submissionStatus, isLoading: isUserSubmissionLoading } =
     useQuery({
       ...userSubmissionQuery(id!, user?.id),
-      enabled: isAuthenticated,
+      enabled: isAuthenticated && !!id && !!user?.id,
+      ...QUERY_OPTIONS.SUBMISSION,
     });
 
   const isSubmitted = submissionStatus?.isSubmitted ?? false;

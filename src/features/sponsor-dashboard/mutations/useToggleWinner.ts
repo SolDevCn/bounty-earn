@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { BONUS_REWARD_POSITION } from '@/constants';
 import { CACHE_INVALIDATION, QUERY_KEYS } from '@/lib/cache';
+import { useApiMutation } from '@/hooks/useApi';
 import { type Listing, type Rewards } from '@/features/listings';
 import { type SubmissionWithUser } from '@/interface/submission';
 
@@ -42,8 +43,24 @@ export const useToggleWinner = (
       if (!response.data) throw new Error('Failed to toggle winner');
       return response.data;
     },
-    onSuccess: (_, variables) => {
-      // Optimistic updates for both regular and hackathon queries
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
+      });
+      await queryClient.cancelQueries({
+        queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, true),
+      });
+
+      // Snapshot the previous value
+      const previousSubmissionsFalse = queryClient.getQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
+      );
+      const previousSubmissionsTrue = queryClient.getQueryData<SubmissionWithUser[]>(
+        QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, true),
+      );
+
+      // Optimistically update to the new value
       queryClient.setQueryData<SubmissionWithUser[]>(
         QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
         (old) =>
@@ -72,11 +89,22 @@ export const useToggleWinner = (
           ),
       );
 
+      return { previousSubmissionsFalse, previousSubmissionsTrue };
+    },
+    onSuccess: (data, variables) => {
+      // Show success message
+      toast.success(
+        variables.isWinner 
+          ? `已选为获胜者 ${variables.winnerPosition ? `(${variables.winnerPosition}等奖)` : ''}`
+          : '已取消获胜者资格'
+      );
+
       // Invalidate sponsor dashboard cache
       if (bounty?.slug) {
-        CACHE_INVALIDATION.SPONSOR_DASHBOARD(queryClient, bounty.slug);
+        CACHE_INVALIDATION.ALL_DASHBOARD(queryClient, bounty.slug);
       }
 
+      // Update local state
       const submissionIndex = submissions.findIndex(
         (s) => s.id === variables.id,
       );
@@ -139,9 +167,35 @@ export const useToggleWinner = (
         });
       }
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
       console.error('Failed to toggle winner:', error);
-      toast.error('失败，请重试');
+      
+      // Rollback to the previous value
+      if (context?.previousSubmissionsFalse !== undefined) {
+        queryClient.setQueryData(
+          QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
+          context.previousSubmissionsFalse,
+        );
+      }
+      if (context?.previousSubmissionsTrue !== undefined) {
+        queryClient.setQueryData(
+          QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, true),
+          context.previousSubmissionsTrue,
+        );
+      }
+      
+      toast.error('操作失败，请重试');
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      if (bounty?.slug) {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, false),
+        });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.SPONSOR_SUBMISSIONS(bounty?.slug!, true),
+        });
+      }
     },
   });
 };
