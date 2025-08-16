@@ -117,7 +117,7 @@ export const SubmissionModal = ({
           setValue('otherInfo', otherInfo);
           setValue('ask', ask);
 
-          if (eligibility) {
+          if (eligibility && eligibilityAnswers) {
             eligibilityAnswers.forEach((curr: EligibilityAnswer) => {
               const index = eligibility.findIndex(
                 (e) => e.question === curr.question,
