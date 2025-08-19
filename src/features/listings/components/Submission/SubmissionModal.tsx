@@ -174,31 +174,56 @@ export const SubmissionModal = ({
         '53cbd2eb-14e5-4b8a-b6fe-e18e0c885145', // network schoool
       ];
 
-      const latestSubmissionNumber = (user?.Submission?.length ?? 0) + 1;
-      if (
-        !editMode &&
-        latestSubmissionNumber === 1 &&
-        !hideEasterEggFromSponsorIds.includes(listing.sponsorId || '')
-      )
-        showEasterEgg();
-      if (!editMode && latestSubmissionNumber % 3 !== 0) onSurveyOpen();
-
+      // Reset form first
       reset();
+      
+      // Step 1: Update caches in correct order to avoid race conditions
+      if (!editMode) {
+        // Invalidate all listing-related cache first
+        CACHE_INVALIDATION.LISTING(queryClient, id!);
+      }
+      
+      // Step 2: Invalidate user submission status
       await queryClient.invalidateQueries({
         queryKey: userSubmissionQuery(id!, user!.id).queryKey,
       });
 
+      // Step 3: Refetch user data and wait for it to complete
       await refetchUser();
 
-      if (!editMode) {
-        // Invalidate all listing-related cache
-        CACHE_INVALIDATION.LISTING(queryClient, id!);
-      }
-
+      // Step 4: Close modal to allow page to stabilize
       onClose();
+
+      // Step 5: Show celebration/survey after a brief delay to ensure stable state
+      const latestSubmissionNumber = (user?.Submission?.length ?? 0) + 1;
+      
+      // Use setTimeout to ensure modal close animation completes and page state stabilizes
+      setTimeout(() => {
+        if (
+          !editMode &&
+          latestSubmissionNumber === 1 &&
+          !hideEasterEggFromSponsorIds.includes(listing.sponsorId || '')
+        ) {
+          showEasterEgg();
+        }
+        if (!editMode && latestSubmissionNumber % 3 !== 0) {
+          onSurveyOpen();
+        }
+      }, 300); // 300ms delay to allow modal animation to complete
     } catch (e) {
+      console.error('Submission failed:', e);
       setError('Sorry! Please try again or contact support.');
       setIsLoading(false);
+      
+      // Ensure we clean up loading state and don't leave user stuck
+      // Reset form to allow retry
+      reset();
+      
+      // If we're in a bad state, at least allow the user to close the modal
+      setTimeout(() => {
+        setIsLoading(false);
+        setError('');
+      }, 5000); // Clear error after 5 seconds to prevent permanent stuck state
     }
   };
 

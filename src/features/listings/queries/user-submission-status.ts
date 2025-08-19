@@ -13,7 +13,8 @@ export const userSubmissionQuery = (
   userId: string | undefined,
 ) =>
   queryOptions({
-    queryKey: ['userSubmission', listingId],
+    queryKey: ['user-submission', listingId, userId], // Fixed: align with cache invalidation logic
     queryFn: () => checkUserSubmission(listingId),
     enabled: !!userId,
+    staleTime: 5 * 1000, // 5 seconds for submission status
   });

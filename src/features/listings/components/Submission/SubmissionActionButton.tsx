@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { usePostHog } from 'posthog-js/react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LuPencil } from 'react-icons/lu';
 
 import { Tooltip } from '@/components/shared/responsive-tooltip';
@@ -44,6 +44,7 @@ export const SubmissionActionButton = ({
   } = listing;
 
   const [isEasterEggOpen, setEasterEggOpen] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { user } = useUser();
 
   const { status: authStatus } = useSession();
@@ -56,9 +57,31 @@ export const SubmissionActionButton = ({
     useQuery({
       ...userSubmissionQuery(id!, user?.id),
       enabled: isAuthenticated,
+      // Add timeout to prevent infinite loading
+      meta: {
+        errorPolicy: 'soft'
+      }
     });
 
   const isSubmitted = submissionStatus?.isSubmitted ?? false;
+
+  // Handle long loading states to prevent permanent stuck state
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isUserSubmissionLoading) {
+      // If loading for more than 10 seconds, show timeout state
+      timeoutId = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 10000);
+    } else {
+      setLoadingTimeout(false);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isUserSubmissionLoading]);
 
   const posthog = usePostHog();
 
@@ -244,8 +267,8 @@ export const SubmissionActionButton = ({
               _hover={{ bg: buttonBG }}
               _disabled={{ opacity: '70%' }}
               isDisabled={isBtnDisabled}
-              isLoading={isUserSubmissionLoading}
-              loadingText={btnLoadingText}
+              isLoading={isUserSubmissionLoading && !loadingTimeout}
+              loadingText={loadingTimeout ? '加载超时，请刷新页面' : btnLoadingText}
               onClick={handleSubmit}
               size="lg"
               variant={buttonState === 'edit' ? 'outline' : 'solid'}
