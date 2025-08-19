@@ -5,7 +5,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 
 import { ErrorSection } from '@/components/shared/ErrorSection';
-import { SurveyModal } from '@/components/shared/Survey';
 import { type MultiSelectOptions } from '@/constants';
 import { getListingDraftStatus, type Listing } from '@/features/listings';
 import { useUser } from '@/store/user';
@@ -120,16 +119,10 @@ export function CreateListing({
   });
   const { isOpen: isVerifyingOpen, onOpen: onVerifyingOpen } = useDisclosure();
 
-  const {
-    isOpen: isSurveyOpen,
-    onOpen: onSurveyOpen,
-    onClose: onSurveyClose,
-  } = useDisclosure();
 
   const [hackathonSponsor, setHackathonSponsor] = useAtom(hackathonSponsorAtom);
 
   const basePath = type === 'hackathon' ? 'hackathon' : 'listings';
-  const surveyId = ''; // TODO what is that?
   const isNewOrDraft =
     listingDraftStatus === 'DRAFT' ||
     listingDraftStatus === 'PREVIEW' ||
@@ -203,12 +196,6 @@ export function CreateListing({
         onVerifyingOpen();
       } else {
         onSuccessOpen();
-      }
-      if (
-        (!user?.surveysShown || !(surveyId in user.surveysShown)) &&
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-      ) {
-        onSurveyOpen();
       }
     } catch (e) {
       setIsListingPublishing(false);
@@ -336,13 +323,6 @@ export function CreateListing({
             <UnderVerificationModal
               isOpen={isVerifyingOpen}
               onClose={() => { }}
-            />
-          )}
-          {isSurveyOpen && (
-            <SurveyModal
-              isOpen={isSurveyOpen}
-              onClose={onSurveyClose}
-              surveyId={surveyId}
             />
           )}
           {steps === 1 && (

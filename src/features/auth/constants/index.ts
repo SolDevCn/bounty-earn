@@ -10,7 +10,6 @@ export const userSelectOptions = {
   publicKey: true,
   skills: true,
   hackathonId: true,
-  surveysShown: true,
   featureModalShown: true,
   interests: true,
   community: true,

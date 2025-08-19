@@ -59,7 +59,6 @@ interface User {
     deadline: string;
     announceDate: string;
   };
-  surveysShown?: Record<string, boolean>;
   stRecommended?: boolean;
   acceptedTOS?: boolean;
   emailSettings?: EmailSettings[];

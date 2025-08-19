@@ -8,7 +8,6 @@ import React, { useState, useEffect } from 'react';
 import { LuPencil } from 'react-icons/lu';
 
 import { Tooltip } from '@/components/shared/responsive-tooltip';
-import { SurveyModal } from '@/components/shared/Survey';
 import { AuthWrapper } from '@/features/auth';
 import {
   getListingDraftStatus,
@@ -68,7 +67,7 @@ export const SubmissionActionButton = ({
   // Handle long loading states to prevent permanent stuck state
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (isUserSubmissionLoading) {
       // If loading for more than 10 seconds, show timeout state
       timeoutId = setTimeout(() => {
@@ -77,7 +76,7 @@ export const SubmissionActionButton = ({
     } else {
       setLoadingTimeout(false);
     }
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
@@ -167,13 +166,6 @@ export const SubmissionActionButton = ({
     buttonBG = 'gray.500';
   }
 
-  const {
-    isOpen: isSurveyOpen,
-    onOpen: onSurveyOpen,
-    onClose: onSurveyClose,
-  } = useDisclosure();
-
-  const surveyId = ''; // TODO what is this
 
   return (
     <>
@@ -186,17 +178,8 @@ export const SubmissionActionButton = ({
           listing={listing}
           isTemplate={isTemplate}
           showEasterEgg={() => setEasterEggOpen(true)}
-          onSurveyOpen={onSurveyOpen}
         />
       )}
-      {isSurveyOpen &&
-        (!user?.surveysShown || !(surveyId in user.surveysShown)) && (
-          <SurveyModal
-            isOpen={isSurveyOpen}
-            onClose={onSurveyClose}
-            surveyId={surveyId}
-          />
-        )}
       {isEasterEggOpen && (
         <EasterEgg
           isOpen={isEasterEggOpen}

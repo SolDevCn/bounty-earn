@@ -46,7 +46,6 @@ interface Props {
   listing: Listing;
   isTemplate?: boolean;
   showEasterEgg: () => void;
-  onSurveyOpen: () => void;
 }
 
 interface EligibilityAnswer {
@@ -63,7 +62,6 @@ export const SubmissionModal = ({
   listing,
   isTemplate = false,
   showEasterEgg,
-  onSurveyOpen,
 }: Props) => {
   const {
     id,
@@ -176,13 +174,13 @@ export const SubmissionModal = ({
 
       // Reset form first
       reset();
-      
+
       // Step 1: Update caches in correct order to avoid race conditions
       if (!editMode) {
         // Invalidate all listing-related cache first
         CACHE_INVALIDATION.LISTING(queryClient, id!);
       }
-      
+
       // Step 2: Invalidate user submission status
       await queryClient.invalidateQueries({
         queryKey: userSubmissionQuery(id!, user!.id).queryKey,
@@ -196,7 +194,7 @@ export const SubmissionModal = ({
 
       // Step 5: Show celebration/survey after a brief delay to ensure stable state
       const latestSubmissionNumber = (user?.Submission?.length ?? 0) + 1;
-      
+
       // Use setTimeout to ensure modal close animation completes and page state stabilizes
       setTimeout(() => {
         if (
@@ -206,19 +204,16 @@ export const SubmissionModal = ({
         ) {
           showEasterEgg();
         }
-        if (!editMode && latestSubmissionNumber % 3 !== 0) {
-          onSurveyOpen();
-        }
       }, 300); // 300ms delay to allow modal animation to complete
     } catch (e) {
       console.error('Submission failed:', e);
       setError('Sorry! Please try again or contact support.');
       setIsLoading(false);
-      
+
       // Ensure we clean up loading state and don't leave user stuck
       // Reset form to allow retry
       reset();
-      
+
       // If we're in a bad state, at least allow the user to close the modal
       setTimeout(() => {
         setIsLoading(false);
