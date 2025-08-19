@@ -74,7 +74,7 @@ export const SurveyModal = ({
     <Modal
       closeOnEsc={false}
       closeOnOverlayClick={false}
-      isOpen={isOpen}
+      isOpen={isOpen && !!question}
       onClose={onClose}
       size="lg"
     >
