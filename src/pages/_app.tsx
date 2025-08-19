@@ -48,7 +48,7 @@ const ReactQueryDevtools = dynamic(
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000, // 1 second for real-time updates
+      staleTime: 5 * 1000, // 5 seconds - increased from 1s to reduce excessive refetching
       gcTime: 5 * 60 * 1000, // 5 minutes
       retry: (failureCount, error: any) => {
         // Don't retry on 404 or 401 errors
@@ -57,6 +57,15 @@ const queryClient = new QueryClient({
       },
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      // Prevent refetching during component mount phase to avoid race conditions
+      refetchOnMount: 'always',
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on 404 or 401 errors
+        if (error?.status === 404 || error?.status === 401) return false;
+        return failureCount < 2;
+      },
     },
   },
 });
