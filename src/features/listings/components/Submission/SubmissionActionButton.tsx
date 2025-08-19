@@ -68,7 +68,7 @@ export const SubmissionActionButton = ({
   // Handle long loading states to prevent permanent stuck state
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (isUserSubmissionLoading) {
       // If loading for more than 10 seconds, show timeout state
       timeoutId = setTimeout(() => {
@@ -77,7 +77,7 @@ export const SubmissionActionButton = ({
     } else {
       setLoadingTimeout(false);
     }
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
@@ -173,7 +173,8 @@ export const SubmissionActionButton = ({
     onClose: onSurveyClose,
   } = useDisclosure();
 
-  const surveyId = ''; // TODO what is this
+  // https://posthog.com/surveys
+  const surveyId = 'testid-meaningless'; // TODO
 
   return (
     <>

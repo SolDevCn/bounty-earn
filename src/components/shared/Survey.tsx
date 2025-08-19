@@ -80,18 +80,8 @@ export const SurveyModal = ({
     >
       <ModalOverlay />
       <ModalContent p={6}>
-        {!question ? (
-          <Box>
-            <Skeleton h="18px" mb={2} />
-            <Skeleton w="60%" h="14px" mb={5} />
-            <Flex justify="center" gap={1} mt={8}>
-              {[...Array(10)].map((_, i) => (
-                <Skeleton key={i} w="40px" h="36px" />
-              ))}
-            </Flex>
-            <Skeleton h="10" mt={8} mb={3} borderRadius={'3'} />
-          </Box>
-        ) : (
+        { question &&
+        (
           <>
             <Box>
               <Text
