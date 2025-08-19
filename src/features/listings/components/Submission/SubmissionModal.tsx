@@ -30,10 +30,9 @@ import {
   TextInputWithHelper,
 } from '@/components/Form/TextAreaHelpers';
 import { SolarMail, tokenList } from '@/constants';
+import { CACHE_INVALIDATION } from '@/lib/cache';
 import { useUser } from '@/store/user';
 
-import { CACHE_INVALIDATION } from '@/lib/cache';
-import { listingSubmissionsQuery, submissionCountQuery } from '../../queries';
 import { userSubmissionQuery } from '../../queries/user-submission-status';
 import { type Listing } from '../../types';
 import { SubmissionTerms } from './SubmissionTerms';
@@ -176,13 +175,13 @@ export const SubmissionModal = ({
 
       // Reset form first
       reset();
-      
+
       // Step 1: Update caches in correct order to avoid race conditions
       if (!editMode) {
         // Invalidate all listing-related cache first
         CACHE_INVALIDATION.LISTING(queryClient, id!);
       }
-      
+
       // Step 2: Invalidate user submission status
       await queryClient.invalidateQueries({
         queryKey: userSubmissionQuery(id!, user!.id).queryKey,
@@ -194,31 +193,57 @@ export const SubmissionModal = ({
       // Step 4: Close modal to allow page to stabilize
       onClose();
 
-      // Step 5: Show celebration/survey after a brief delay to ensure stable state
-      const latestSubmissionNumber = (user?.Submission?.length ?? 0) + 1;
-      
-      // Use setTimeout to ensure modal close animation completes and page state stabilizes
-      setTimeout(() => {
-        if (
-          !editMode &&
-          latestSubmissionNumber === 1 &&
-          !hideEasterEggFromSponsorIds.includes(listing.sponsorId || '')
-        ) {
-          showEasterEgg();
+      // Step 5: Wait for data synchronization and then show celebration/survey
+      // Use a longer delay and check for updated data to avoid race conditions
+      setTimeout(async () => {
+        try {
+          // Re-fetch the latest user data to ensure we have the most current submission count
+          const { data: freshUserData } = await queryClient.fetchQuery({
+            queryKey: ['user'],
+            queryFn: async () => {
+              const { data } = await axios.get('/api/user/');
+              return data;
+            },
+            staleTime: 0, // Force fresh fetch
+          });
+
+          const latestSubmissionNumber = freshUserData?.Submission?.length ?? 0;
+
+          // Only show celebrations for new submissions (not edits)
+          if (!editMode) {
+            // Show Easter egg for first submission
+            if (
+              latestSubmissionNumber === 1 &&
+              !hideEasterEggFromSponsorIds.includes(listing.sponsorId || '')
+            ) {
+              showEasterEgg();
+            }
+
+            // Show survey for every 3rd submission (but not first)
+            if (
+              latestSubmissionNumber > 1 &&
+              latestSubmissionNumber % 3 === 0
+            ) {
+              onSurveyOpen();
+            }
+          }
+        } catch (celebrationError) {
+          console.warn(
+            'Failed to show celebration, but submission was successful:',
+            celebrationError,
+          );
+          // Don't block the user if celebrations fail - submission was successful
         }
-        if (!editMode && latestSubmissionNumber % 3 !== 0) {
-          onSurveyOpen();
-        }
-      }, 300); // 300ms delay to allow modal animation to complete
+      }, 500); // Increased delay to allow all data updates to propagate
     } catch (e) {
       console.error('Submission failed:', e);
       setError('Sorry! Please try again or contact support.');
       setIsLoading(false);
-      
+
       // Ensure we clean up loading state and don't leave user stuck
       // Reset form to allow retry
       reset();
-      
+
       // If we're in a bad state, at least allow the user to close the modal
       setTimeout(() => {
         setIsLoading(false);

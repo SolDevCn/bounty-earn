@@ -9,6 +9,7 @@ import {
   Text,
 } from '@chakra-ui/react';
 import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import Pride from 'react-canvas-confetti/dist/presets/pride';
 import { type TDecorateOptionsFn } from 'react-canvas-confetti/dist/types';
 
@@ -50,8 +51,60 @@ const decorateOptions: TDecorateOptionsFn = (options) => {
 };
 
 export const EasterEgg = ({ isOpen, onClose, isProject }: Props) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  // Handle keyboard events
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
+  // Handle audio playback only after user interaction
+  useEffect(() => {
+    if (isOpen && hasUserInteracted && audioRef.current) {
+      const playAudio = async () => {
+        try {
+          await audioRef.current?.play();
+        } catch (error) {
+          console.log('Audio autoplay prevented:', error);
+        }
+      };
+      playAudio();
+    }
+
+    // Cleanup: pause audio when modal closes
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, [isOpen, hasUserInteracted]);
+
+  const handleUserInteraction = () => {
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal
+      blockScrollOnMount={true}
+      closeOnEsc={true}
+      closeOnOverlayClick={false} // Prevent accidental close
+      isCentered // Allow ESC key to close
+      isOpen={isOpen}
+      onClose={onClose}
+    >
       <ModalContent
         pos="fixed"
         top="0"
@@ -63,9 +116,16 @@ export const EasterEgg = ({ isOpen, onClose, isProject }: Props) => {
         mb="0"
         bg="#5243FF"
         borderRadius={0}
+        onClick={handleUserInteraction} // Track user interaction for audio
       >
-        <Pride autorun={{ speed: 10 }} decorateOptions={decorateOptions} />
-        <ModalCloseButton w={6} h={6} m={4} color="white">
+        {/* Only run confetti animation when modal is open to save resources */}
+        {isOpen && (
+          <Pride
+            autorun={{ speed: 10, duration: 3000 }} // Limit duration to 3 seconds
+            decorateOptions={decorateOptions}
+          />
+        )}
+        <ModalCloseButton zIndex={10} w={6} h={6} m={4} color="white">
           <CloseIcon width={4} height={4} />
         </ModalCloseButton>
         <Container mt={[28, 6]} px={4}>
@@ -119,10 +179,11 @@ export const EasterEgg = ({ isOpen, onClose, isProject }: Props) => {
           />
         </AbsoluteCenter>
         <audio
+          ref={audioRef}
           src="/assets/memes/jiesuan.mp3"
           style={{ display: 'none' }}
-          autoPlay
           loop
+          preload="metadata" // Only preload metadata, not the entire file
         />
       </ModalContent>
     </Modal>

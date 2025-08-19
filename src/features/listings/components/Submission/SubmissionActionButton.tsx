@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { usePostHog } from 'posthog-js/react';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LuPencil } from 'react-icons/lu';
 
 import { Tooltip } from '@/components/shared/responsive-tooltip';
@@ -59,8 +59,8 @@ export const SubmissionActionButton = ({
       enabled: isAuthenticated,
       // Add timeout to prevent infinite loading
       meta: {
-        errorPolicy: 'soft'
-      }
+        errorPolicy: 'soft',
+      },
     });
 
   const isSubmitted = submissionStatus?.isSubmitted ?? false;
@@ -68,20 +68,36 @@ export const SubmissionActionButton = ({
   // Handle long loading states to prevent permanent stuck state
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (isUserSubmissionLoading) {
       // If loading for more than 10 seconds, show timeout state
       timeoutId = setTimeout(() => {
         setLoadingTimeout(true);
+        console.warn(
+          'Submission status loading timeout - possible page state issue',
+        );
       }, 10000);
     } else {
       setLoadingTimeout(false);
     }
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [isUserSubmissionLoading]);
+
+  // Recovery mechanism for stuck states
+  useEffect(() => {
+    if (loadingTimeout) {
+      // After showing timeout, try to recover by refetching
+      const recoveryTimeout = setTimeout(() => {
+        console.log('Attempting to recover from stuck state');
+        window.location.reload(); // Last resort recovery
+      }, 15000); // Give 15 more seconds before forcing reload
+
+      return () => clearTimeout(recoveryTimeout);
+    }
+  }, [loadingTimeout]);
 
   const posthog = usePostHog();
 
@@ -151,11 +167,11 @@ export const SubmissionActionButton = ({
       buttonBG = 'brand.purple';
       isBtnDisabled = Boolean(
         pastDeadline ||
-        (user?.id &&
-          user?.isTalentFilled &&
-          ((bountyDraftStatus !== 'PUBLISHED' && status !== 'PREVIEW') ||
-            !hasHackathonStarted ||
-            !isUserEligibleByRegion)),
+          (user?.id &&
+            user?.isTalentFilled &&
+            ((bountyDraftStatus !== 'PUBLISHED' && status !== 'PREVIEW') ||
+              !hasHackathonStarted ||
+              !isUserEligibleByRegion)),
       );
       btnLoadingText = '正在检查中';
   }
@@ -204,25 +220,27 @@ export const SubmissionActionButton = ({
           isProject={isProject}
         />
       )}
-      <Image
-        // Hack to show GIF Immediately when Easter Egg is visible
-        src="/assets/memes/jiesuan.gif"
-        style={{
-          width: '100%',
-          marginTop: 'auto',
-          display: 'block',
-          visibility: 'hidden',
-          position: 'fixed',
-          zIndex: -99999,
-          top: '-300%',
-          left: '-300%',
-        }}
-        width="500"
-        height="600"
-        priority
-        loading="eager"
-        quality={80}
-      />
+      {/* Lazy load easter egg resources only when needed */}
+      {isEasterEggOpen && (
+        <Image
+          src="/assets/memes/jiesuan.gif"
+          style={{
+            width: '100%',
+            marginTop: 'auto',
+            display: 'block',
+            visibility: 'hidden',
+            position: 'fixed',
+            zIndex: -99999,
+            top: '-300%',
+            left: '-300%',
+          }}
+          width="500"
+          height="600"
+          priority
+          loading="eager"
+          quality={80}
+        />
+      )}
 
       <Flex
         className="ph-no-capture"
@@ -238,9 +256,7 @@ export const SubmissionActionButton = ({
       >
         <AuthWrapper
           showCompleteProfileModal
-          completeProfileModalBodyText={
-            '请在提交前填写个人资料'
-          }
+          completeProfileModalBodyText={'请在提交前填写个人资料'}
           style={{ w: 'full', cursor: 'pointer' }}
         >
           <Tooltip
@@ -268,7 +284,9 @@ export const SubmissionActionButton = ({
               _disabled={{ opacity: '70%' }}
               isDisabled={isBtnDisabled}
               isLoading={isUserSubmissionLoading && !loadingTimeout}
-              loadingText={loadingTimeout ? '加载超时，请刷新页面' : btnLoadingText}
+              loadingText={
+                loadingTimeout ? '加载超时，请刷新页面' : btnLoadingText
+              }
               onClick={handleSubmit}
               size="lg"
               variant={buttonState === 'edit' ? 'outline' : 'solid'}
