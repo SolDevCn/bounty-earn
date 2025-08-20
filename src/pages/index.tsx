@@ -111,7 +111,7 @@ export default function HomePage({
           forYou={combinedForYouListings}
           isListingsLoading={false}
           emoji=""
-          title="自由职业机会"
+          title="赏金任务"
           viewAllLink="/all"
           take={20}
           showViewAll

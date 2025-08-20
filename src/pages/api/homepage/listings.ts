@@ -53,26 +53,20 @@ export async function getListings({
       isActive: true,
       isPrivate: false,
       isArchived: false,
-      // Only filter out hackathon prizes when not in tab=open mode
-      ...(!isTabOpen ? { hackathonprize: false } : {}),
-      // When tab=open, use the same filtering as /api/listings
-      ...(isTabOpen ? {
-        // No compensation filter
-        // No language filter
-        // Note: /api/listings doesn't filter by hackathonprize or Hackathon
-      } : {
-        OR: [
-          { compensationType: 'fixed', usdValue: { gt: 100 } },
-          { compensationType: 'range', maxRewardAsk: { gt: 100 } },
-          { compensationType: 'variable' },
-        ],
-        language: { in: ['eng', 'sco'] }, //cuz both eng and sco refer to listings in english
-      }),
+      // Filter out hackathon prizes
+      hackathonprize: false,
+      // Apply compensation and language filters
+      OR: [
+        { compensationType: 'fixed', usdValue: { gt: 100 } },
+        { compensationType: 'range', maxRewardAsk: { gt: 100 } },
+        { compensationType: 'variable' },
+      ],
+      language: { in: ['eng', 'sco'] }, //cuz both eng and sco refer to listings in english
       ...statusFilterQuery,
       // Only apply region filter when not in tab=open mode
       ...(!isTabOpen && userRegion ? { region: { in: userRegion } } : {}),
-      // Only exclude hackathons when not in tab=open mode
-      ...(!isTabOpen ? { Hackathon: null } : {}),
+      // Exclude hackathons
+      Hackathon: null,
     },
     select: {
       id: true,
