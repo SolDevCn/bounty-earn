@@ -2,12 +2,7 @@ import { Box, Flex, Text } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import React from 'react';
 
-import {
-  AllPostsIcon,
-  HomeIcon,
-  LeaderboardIcon,
-  WinnersIcon,
-} from '@/features/feed';
+import { AllPostsIcon, HomeIcon, WinnersIcon } from '@/features/feed';
 import { Home } from '@/layouts/Home';
 
 const NavItem = ({
@@ -69,7 +64,7 @@ export const FeedPageLayout = ({
             {/* <NavItem name="排行榜" icon={LeaderboardIcon} href="/Leaderboard" /> */}
             <NavItem name="获胜者" icon={WinnersIcon} href="/feed/winners" />
             {!isHomePage && (
-              <NavItem name="All Posts" icon={AllPostsIcon} href="/feed" />
+              <NavItem name="所有任务" icon={AllPostsIcon} href="/feed" />
             )}
           </Flex>
           <Flex direction={'column'} w="100%">

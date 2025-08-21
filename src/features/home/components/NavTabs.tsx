@@ -1,15 +1,16 @@
 import { Flex, type FlexProps, Link } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { usePostHog } from 'posthog-js/react';
-import { useEffect, useMemo } from 'react';
 
-import { Superteams } from '@/constants/Superteam';
 import { CATEGORY_NAV_ITEMS } from '@/features/navbar';
-import { useUser } from '@/store/user';
 
-import { regionLiveCountQuery } from '../queries/region-live-count';
+// Remove region-related imports for Chinese platform - no region filtering needed
+// import { useQuery } from '@tanstack/react-query';
+// import { useEffect, useMemo } from 'react';
+// import { Superteams } from '@/constants/Superteam';
+// import { useUser } from '@/store/user';
+// import { regionLiveCountQuery } from '../queries/region-live-count';
 
 interface PillTabProps {
   href: string;
@@ -53,27 +54,23 @@ function PillTab({ href, children, altActive, phEvent }: PillTabProps) {
 }
 
 export function NavTabs({ ...flexProps }: FlexProps) {
-  const { user } = useUser();
-
-  const superteam = useMemo(() => {
-    return (
-      Superteams.find((s) => s.country.includes(user?.location ?? '')) ?? null
-    );
-  }, [user?.location]);
-
-  const region = superteam?.region;
-
-  const { data: regionLiveCount, refetch } = useQuery(
-    regionLiveCountQuery(region!),
-  );
-
-  useEffect(() => {
-    if (region) {
-      refetch();
-    }
-  }, [region, refetch]);
-
-  const showRegionTab = region && (regionLiveCount?.count ?? 0) > 0;
+  // Remove region-related logic for Chinese platform - only show global navigation
+  // const { user } = useUser();
+  // const superteam = useMemo(() => {
+  //   return (
+  //     Superteams.find((s) => s.country.includes(user?.location ?? '')) ?? null
+  //   );
+  // }, [user?.location]);
+  // const region = superteam?.region;
+  // const { data: regionLiveCount, refetch } = useQuery(
+  //   regionLiveCountQuery(region!),
+  // );
+  // useEffect(() => {
+  //   if (region) {
+  //     refetch();
+  //   }
+  // }, [region, refetch]);
+  // const showRegionTab = region && (regionLiveCount?.count ?? 0) > 0;
 
   return (
     <Flex
@@ -87,15 +84,15 @@ export function NavTabs({ ...flexProps }: FlexProps) {
       <PillTab href="/" altActive={['/all/']} phEvent="all_navpill">
         所有
       </PillTab>
-      {showRegionTab && (
+      {/* Remove region tab for Chinese platform */}
+      {/* {showRegionTab && (
         <PillTab
           href={`/regions/${region.toLowerCase()}/`}
           phEvent={`${region.toLowerCase()}_navpill`}
         >
-          {/* {superteam.code && <UserFlag location={superteam.code} isCode />} */}
           {superteam.displayValue}
         </PillTab>
-      )}
+      )} */}
       {CATEGORY_NAV_ITEMS?.map((navItem) => {
         return (
           <PillTab

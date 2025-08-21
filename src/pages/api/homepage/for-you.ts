@@ -1,9 +1,10 @@
-import { Regions } from '@prisma/client';
+// Remove unused imports for Chinese platform - no region filtering needed  
+// import { Regions } from '@prisma/client';
 import { type NextApiResponse } from 'next';
 
 import { type NextApiRequestWithUser, withAuth } from '@/features/auth';
 import {
-  getCombinedRegion,
+  // getCombinedRegion,
   getStatusFilterQuery,
   type StatusFilter,
 } from '@/features/listings';
@@ -35,9 +36,10 @@ export async function getForYouListings({ statusFilter, userId }: ForYouProps) {
       (skill) => skill.skills,
     ) || [];
 
-  const userRegion = user?.location
-    ? getCombinedRegion(user?.location)
-    : undefined;
+  // Remove user region detection for Chinese platform - show all global listings for recommendations
+  // const userRegion = user?.location
+  //   ? getCombinedRegion(user?.location)
+  //   : undefined;
 
   const statusFilterQuery = getStatusFilterQuery(statusFilter);
   let orderBy:
@@ -69,9 +71,10 @@ export async function getForYouListings({ statusFilter, userId }: ForYouProps) {
       hackathonprize: false,
       isArchived: false,
       language: { in: ['eng', 'sco'] },
-      region: {
-        in: userRegion ? [Regions.GLOBAL, userRegion.name] : [Regions.GLOBAL],
-      },
+      // Remove region filtering for Chinese platform - show all global listings for recommendations
+      // region: {
+      //   in: userRegion ? [Regions.GLOBAL, userRegion.name] : [Regions.GLOBAL],
+      // },
       AND: [
         {
           OR: [

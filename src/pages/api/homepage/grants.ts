@@ -16,7 +16,8 @@ async function getGrants({ userRegion }: GrantProps) {
       isActive: true,
       isArchived: false,
       isPrivate: false,
-      ...(userRegion ? { region: { in: userRegion } } : {}),
+      // Remove region filtering for Chinese platform - show all global grants
+      // ...(userRegion ? { region: { in: userRegion } } : {}),
     },
     take: TAKE,
     orderBy: {

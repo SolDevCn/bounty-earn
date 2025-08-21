@@ -1,8 +1,9 @@
-import { type BountyType, type Prisma, Regions } from '@prisma/client';
+import { type BountyType, type Prisma } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getToken } from 'next-auth/jwt';
+// Remove unused imports for Chinese platform - no region filtering needed
+// import { getToken } from 'next-auth/jwt';
 
-import { CombinedRegions } from '@/constants/Superteam';
+// import { CombinedRegions } from '@/constants/Superteam';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 import { dayjs } from '@/utils/dayjs';
@@ -112,19 +113,20 @@ export default async function listings(
     }
   }
 
-  const token = await getToken({ req });
-  const userId = token?.sub;
-  let userRegion;
-  if (userId) {
-    const user = await prisma.user.findFirst({
-      where: { id: userId },
-      select: { location: true },
-    });
-    const matchedRegion = CombinedRegions.find(
-      (region) => user?.location && region.country.includes(user?.location),
-    );
-    userRegion = matchedRegion?.region;
-  }
+  // Remove user region detection for Chinese platform - show all global listings
+  // const token = await getToken({ req });
+  // const userId = token?.sub;
+  // let userRegion;
+  // if (userId) {
+  //   const user = await prisma.user.findFirst({
+  //     where: { id: userId },
+  //     select: { location: true },
+  //   });
+  //   const matchedRegion = CombinedRegions.find(
+  //     (region) => user?.location && region.country.includes(user?.location),
+  //   );
+  //   userRegion = matchedRegion?.region;
+  // }
 
   const listingQueryOptions: Prisma.BountiesFindManyArgs = {
     where: {
@@ -136,13 +138,25 @@ export default async function listings(
       isPrivate: false,
       isArchived: false,
       status: 'OPEN',
+      // Filter out hackathon prizes
+      hackathonprize: false,
+      // Apply compensation and language filters for consistency
+      OR: [
+        { compensationType: 'fixed', usdValue: { gt: 100 } },
+        { compensationType: 'range', maxRewardAsk: { gt: 100 } },
+        { compensationType: 'variable' },
+      ],
+      language: { in: ['eng', 'sco'] },
       deadline: {
         gte: deadline,
       },
       type: type || { in: ['bounty', 'project'] },
       ...skillsFilter,
       NOT: { id },
-      ...(userRegion ? { region: { in: [userRegion, Regions.GLOBAL] } } : {}),
+      // Exclude hackathons
+      Hackathon: null,
+      // Remove region filtering for Chinese platform - show all global listings
+      // ...(userRegion ? { region: { in: [userRegion, Regions.GLOBAL] } } : {}),
       ...(exclusiveSponsorId ? { sponsorId: exclusiveSponsorId } : {}),
     },
     select: {

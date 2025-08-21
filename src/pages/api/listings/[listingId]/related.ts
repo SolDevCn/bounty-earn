@@ -1,8 +1,9 @@
 import { type BountyType, Prisma } from '@prisma/client';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-import { getToken } from 'next-auth/jwt';
+// Remove unused imports for Chinese platform - no region filtering needed
+// import { getToken } from 'next-auth/jwt';
 
-import { CombinedRegions } from '@/constants/Superteam';
+// import { CombinedRegions } from '@/constants/Superteam';
 import {
   type ParentSkills,
   type Skills,
@@ -22,20 +23,21 @@ export default async function relatedListings(
   logger.debug(`Request query: ${safeStringify(req.query)}`);
 
   try {
-    const token = await getToken({ req });
-    const userId = token?.sub;
-    let userRegion;
+    // Remove user region detection for Chinese platform - show all global related listings  
+    // const token = await getToken({ req });
+    // const userId = token?.sub;
+    // let userRegion;
 
-    if (userId) {
-      const user = await prisma.user.findFirst({
-        where: { id: userId },
-        select: { location: true },
-      });
-      const matchedRegion = CombinedRegions.find(
-        (region) => user?.location && region.country.includes(user?.location),
-      );
-      userRegion = matchedRegion?.region;
-    }
+    // if (userId) {
+    //   const user = await prisma.user.findFirst({
+    //     where: { id: userId },
+    //     select: { location: true },
+    //   });
+    //   const matchedRegion = CombinedRegions.find(
+    //     (region) => user?.location && region.country.includes(user?.location),
+    //   );
+    //   userRegion = matchedRegion?.region;
+    // }
 
     const listing = await prisma.bounties.findUnique({
       where: { id: listingId },
@@ -62,7 +64,8 @@ export default async function relatedListings(
         take,
         true,
         listing.type,
-        userRegion,
+        // Remove userRegion parameter for Chinese platform
+        undefined,
       );
     } else {
       const mainSkills = listingSkills.map((skill) => skill.skills);
@@ -72,7 +75,8 @@ export default async function relatedListings(
         take,
         false,
         listing.type,
-        userRegion,
+        // Remove userRegion parameter for Chinese platform
+        undefined,
       );
     }
 
@@ -115,9 +119,11 @@ async function findRelatedListings(
     skillQuery = Prisma.sql`TRUE`;
   }
 
-  const regionFilter = userRegion
-    ? Prisma.sql`AND (region = ${userRegion} OR region = 'GLOBAL')`
-    : Prisma.empty;
+  // Remove region filtering for Chinese platform - show all global related listings
+  // const regionFilter = userRegion
+  //   ? Prisma.sql`AND (region = ${userRegion} OR region = 'GLOBAL')`
+  //   : Prisma.empty;
+  const regionFilter = Prisma.empty;
 
   return await prisma.$queryRaw`
     SELECT 

@@ -63,8 +63,8 @@ export async function getListings({
       ],
       language: { in: ['eng', 'sco'] }, //cuz both eng and sco refer to listings in english
       ...statusFilterQuery,
-      // Only apply region filter when not in tab=open mode
-      ...(!isTabOpen && userRegion ? { region: { in: userRegion } } : {}),
+      // Remove region filtering to match /api/listings/ behavior and fix empty homepage
+      // ...(!isTabOpen && userRegion ? { region: { in: userRegion } } : {}),
       // Exclude hackathons
       Hackathon: null,
     },

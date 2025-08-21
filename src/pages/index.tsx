@@ -156,7 +156,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     });
   }
 
-  const tab = context.query.tab as string;
+  const tab = (context.query.tab as string) || 'open';
   
   const openListings = await getListings({
     statusFilter: 'open',
