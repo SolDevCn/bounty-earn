@@ -139,10 +139,14 @@ function TalentProfile({ talent, stats }: TalentProps) {
   const isMD = useBreakpointValue({ base: false, md: true });
 
   const getWorkPreferenceText = (workPrefernce?: string): string | null => {
-    if (!workPrefernce || workPrefernce === 'Not looking for Work' || workPrefernce === '不找工作') {
+    if (
+      !workPrefernce ||
+      workPrefernce === 'Not looking for Work' ||
+      workPrefernce === '不找工作'
+    ) {
       return null;
     }
-    
+
     // Handle both English and Chinese values
     const fullTimePatterns = [
       // English patterns
@@ -327,18 +331,18 @@ function TalentProfile({ talent, stats }: TalentProps) {
                 >
                   {user?.id === talent?.id
                     ? renderButton(
-                      <EditIcon />,
-                      '修改个人信息',
-                      handleEditProfileClick,
-                    )
+                        <EditIcon />,
+                        '修改个人信息',
+                        handleEditProfileClick,
+                      )
                     : renderButton(<EmailIcon />, '联系', () => {
-                      posthog.capture('reach out_talent profile');
-                      const email = encodeURIComponent(talent?.email || '');
-                      const subject =
-                        encodeURIComponent('看到了您的个人资料');
-                      const bcc = encodeURIComponent(SolarMail);
-                      window.location.href = `mailto:${email}?subject=${subject}&bcc=${bcc}`;
-                    })}
+                        posthog.capture('reach out_talent profile');
+                        const email = encodeURIComponent(talent?.email || '');
+                        const subject =
+                          encodeURIComponent('看到了您的个人资料');
+                        const bcc = encodeURIComponent(SolarMail);
+                        window.location.href = `mailto:${email}?subject=${subject}&bcc=${bcc}`;
+                      })}
                   {renderButton(<ShareIcon />, '分享', onOpen, true)}
                 </Flex>
               </Flex>
@@ -395,7 +399,11 @@ function TalentProfile({ talent, stats }: TalentProps) {
                             fontSize="xs"
                             fontWeight={500}
                           >
-                            {skillMapCN[skillItem.skills]}
+                            {
+                              skillMapCN[
+                                skillItem.skills as keyof typeof skillMapCN
+                              ]
+                            }
                           </Text>
                           <Flex align="center">
                             <Flex wrap={'wrap'} gap={2} mt={2}>
