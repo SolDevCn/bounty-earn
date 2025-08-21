@@ -8,6 +8,7 @@ function AllListingsPage() {
   const { data: listings, isLoading } = useQuery(
     listingsQuery({
       take: 500,
+      type: 'bounty',
     }),
   );
 
@@ -18,7 +19,7 @@ function AllListingsPage() {
           bounties={listings}
           isListingsLoading={isLoading}
           emoji=""
-          title="自由职业机会"
+          title="赏金任务"
           viewAllLink="/all"
         />
       </Box>

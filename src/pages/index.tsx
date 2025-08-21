@@ -111,7 +111,7 @@ export default function HomePage({
           forYou={combinedForYouListings}
           isListingsLoading={false}
           emoji=""
-          title="自由职业机会"
+          title="赏金任务"
           viewAllLink="/all"
           take={20}
           showViewAll
@@ -156,7 +156,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     });
   }
 
-  const tab = context.query.tab as string;
+  const tab = (context.query.tab as string) || 'open';
   
   const openListings = await getListings({
     statusFilter: 'open',

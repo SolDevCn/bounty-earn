@@ -1,8 +1,9 @@
-import { Regions } from '@prisma/client';
+// Remove unused imports for Chinese platform - no region filtering needed
+// import { Regions } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getToken } from 'next-auth/jwt';
+// import { getToken } from 'next-auth/jwt';
 
-import { CombinedRegions } from '@/constants/Superteam';
+// import { CombinedRegions } from '@/constants/Superteam';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 import { safeStringify } from '@/utils/safeStringify';
@@ -52,23 +53,24 @@ export default async function grants(
       }
     }
 
-    const token = await getToken({ req });
-    const userId = token?.sub;
-    let userRegion: Regions[] | null | undefined = null;
-    if (userId) {
-      const user = await prisma.user.findFirst({
-        where: { id: userId },
-        select: { location: true },
-      });
-      const matchedRegion = CombinedRegions.find(
-        (region) => user?.location && region.country.includes(user?.location),
-      );
-      if (matchedRegion?.region) {
-        userRegion = [matchedRegion.region, Regions.GLOBAL];
-      } else {
-        userRegion = [Regions.GLOBAL];
-      }
-    }
+    // Remove user region detection for Chinese platform - show all global grants
+    // const token = await getToken({ req });
+    // const userId = token?.sub;
+    // let userRegion: Regions[] | null | undefined = null;
+    // if (userId) {
+    //   const user = await prisma.user.findFirst({
+    //     where: { id: userId },
+    //     select: { location: true },
+    //   });
+    //   const matchedRegion = CombinedRegions.find(
+    //     (region) => user?.location && region.country.includes(user?.location),
+    //   );
+    //   if (matchedRegion?.region) {
+    //     userRegion = [matchedRegion.region, Regions.GLOBAL];
+    //   } else {
+    //     userRegion = [Regions.GLOBAL];
+    //   }
+    // }
 
     const grants = await prisma.grants.findMany({
       where: {
@@ -79,7 +81,8 @@ export default async function grants(
         isActive: true,
         isArchived: false,
         ...skillsFilter,
-        ...(userRegion ? { region: { in: userRegion } } : {}),
+        // Remove region filtering for Chinese platform - show all global grants
+        // ...(userRegion ? { region: { in: userRegion } } : {}),
         isPrivate: false,
       },
       take,
