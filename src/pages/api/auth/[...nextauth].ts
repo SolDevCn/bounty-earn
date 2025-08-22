@@ -43,6 +43,11 @@ export const authOptions: NextAuthOptions = {
           logger.debug('OTP Not Sent, Blocked Email');
         }
 
+        // 删除该邮箱的所有旧验证码（确保重新发送后旧码作废）
+        await prisma.verificationToken.deleteMany({
+          where: { identifier },
+        });
+
         await resend.emails.send({
           from: kashEmail,
           to: [identifier],
@@ -51,7 +56,7 @@ export const authOptions: NextAuthOptions = {
           replyTo: replyToEmail,
         });
       },
-      maxAge: 30 * 60,
+      maxAge: 10 * 60,
     }),
   ],
   session: {
