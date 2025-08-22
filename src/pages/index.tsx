@@ -1,18 +1,19 @@
 import { Box } from '@chakra-ui/react';
-import { Regions } from '@prisma/client';
+import type { Regions } from '@prisma/client';
 import { useQuery } from '@tanstack/react-query';
 import type { GetServerSideProps } from 'next';
 import dynamic from 'next/dynamic';
 import { getServerSession } from 'next-auth';
 import { useEffect, useState } from 'react';
 
-import { CombinedRegions } from '@/constants/Superteam';
+// Remove region-related imports for Chinese platform - complete globalization
+// import { CombinedRegions } from '@/constants/Superteam';
 import {
   homepageForYouListingsQuery,
   homepageListingsQuery,
 } from '@/features/home';
 import {
-  getCombinedRegion,
+  // getCombinedRegion,
   type Listing,
   ListingTabs,
 } from '@/features/listings';
@@ -68,7 +69,7 @@ export default function HomePage({
     homepageListingsQuery({
       order: 'desc',
       statusFilter: 'review',
-      userRegion,
+      userRegion: null, // No region filtering for Chinese platform
       excludeIds: reviewForYouListings?.map((l) => l.id!),
     }),
   );
@@ -76,8 +77,8 @@ export default function HomePage({
   const { data: completeListings } = useQuery(
     homepageListingsQuery({
       order: 'desc',
-      statusFilter: 'completed',
-      userRegion,
+      statusFilter: 'completed', 
+      userRegion: null, // No region filtering for Chinese platform
       excludeIds: completeForYouListings?.map((l) => l.id!),
     }),
   );
@@ -131,20 +132,25 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
 
   if (session && session.user.id) {
     isAuth = true;
-    const matchedRegion = getCombinedRegion(session.user.location);
-    if (matchedRegion) {
-      userRegion = [matchedRegion.name, Regions.GLOBAL];
-    } else {
-      userRegion = [Regions.GLOBAL];
-    }
-    const matchedGrantsRegion = CombinedRegions.find((region) =>
-      region.country.includes(session.user.location!),
-    );
-    if (matchedGrantsRegion?.region) {
-      userGrantsRegion = [matchedGrantsRegion.region, Regions.GLOBAL];
-    } else {
-      userGrantsRegion = [Regions.GLOBAL];
-    }
+    // Remove region detection for Chinese platform - complete globalization
+    // const matchedRegion = getCombinedRegion(session.user.location);
+    // if (matchedRegion) {
+    //   userRegion = [matchedRegion.name, Regions.GLOBAL];
+    // } else {
+    //   userRegion = [Regions.GLOBAL];
+    // }
+    // const matchedGrantsRegion = CombinedRegions.find((region) =>
+    //   region.country.includes(session.user.location!),
+    // );
+    // if (matchedGrantsRegion?.region) {
+    //   userGrantsRegion = [matchedGrantsRegion.region, Regions.GLOBAL];
+    // } else {
+    //   userGrantsRegion = [Regions.GLOBAL];
+    // }
+    
+    // For Chinese platform, everything is global - no region filtering needed
+    userRegion = null;
+    userGrantsRegion = null;
   }
 
   let openForYouListings: Awaited<ReturnType<typeof getForYouListings>> = [];
@@ -161,7 +167,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
   const openListings = await getListings({
     statusFilter: 'open',
     order: 'desc',
-    userRegion,
+    userRegion: null, // No region filtering for Chinese platform
     excludeIds: openForYouListings.map((listing) => listing.id),
     tab,
   });
