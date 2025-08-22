@@ -24,11 +24,11 @@ export default function VerifyRequest() {
   const [email, setEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
+  const [otpValue, setOtpValue] = useState('');
+  const [timeLeft, setTimeLeft] = useState(10 * 60); // 10分钟有效期
   const [canResend, setCanResend] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
-  const [otpValue, setOtpValue] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -41,22 +41,18 @@ export default function VerifyRequest() {
     }
   }, [router]);
 
-  // 倒计时逻辑
+  // 验证码有效期倒计时
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
     } else {
       setCanResend(true);
-      // 验证码过期，跳转回登录页面
-      setVerificationError('验证码已过期，请重新登录获取新的验证码。');
-      setTimeout(() => {
-        localStorage.removeItem('emailForSignIn');
-        router.push('/');
-      }, 5000);
+      // 验证码过期，显示提示
+      setVerificationError('验证码已过期，请重新发送验证码。');
     }
     return undefined;
-  }, [timeLeft, router]);
+  }, [timeLeft]);
 
   // 重发验证码冷却时间
   useEffect(() => {
@@ -69,12 +65,6 @@ export default function VerifyRequest() {
     }
     return undefined;
   }, [resendCooldown]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   const verifyOTP = async (value: string) => {
     if (isVerifying || !value || value.length !== 6) return;
@@ -98,9 +88,7 @@ export default function VerifyRequest() {
       // 检查响应状态
       if (response.status === 200 || response.status === 0) {
         // 验证成功，跳转
-        router.push(
-          `/api/auth/callback/email?token=${token}&email=${encodedEmail}`,
-        );
+        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
       } else {
         // 验证失败
         handleVerificationError();
@@ -118,8 +106,8 @@ export default function VerifyRequest() {
     setIsVerifying(false);
 
     if (newErrorCount >= 5) {
-      // 5次错误后跳转回登录页面
-      setVerificationError('验证码错误次数过多，请重新登录获取新的验证码。');
+      // 5次错误后跳转回主页
+      setVerificationError('验证码错误次数过多，请稍后重试。即将跳转到主页...');
       setTimeout(() => {
         localStorage.removeItem('emailForSignIn');
         router.push('/');
@@ -132,15 +120,21 @@ export default function VerifyRequest() {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const handleResendCode = async () => {
     if (!canResend || resendCooldown > 0) return;
 
-    setResendCooldown(60); // 60 seconds cooldown
-    setTimeLeft(30 * 60); // Reset timer
+    setResendCooldown(60); // 60秒冷却时间
+    setTimeLeft(10 * 60); // 重置10分钟倒计时
     setCanResend(false);
     setVerificationError('');
-    setErrorCount(0); // 重置错误计数
     setOtpValue(''); // 清空输入框
+    setErrorCount(0); // 重置错误计数
 
     try {
       // 重新发送验证码请求
@@ -161,10 +155,13 @@ export default function VerifyRequest() {
         setTimeout(() => {
           setVerificationError('');
         }, 3000);
+      } else {
+        throw new Error('Failed to send verification code');
       }
     } catch (error) {
       console.error('Failed to resend verification code:', error);
       setVerificationError('发送验证码失败，请稍后重试。');
+      setResendCooldown(0); // 重置冷却时间
     }
   };
 
@@ -213,58 +210,58 @@ export default function VerifyRequest() {
             </Alert>
           )}
 
-          <VStack w="full" spacing={4}>
-            <Box pos="relative">
-              <Flex justify="center" gap={1.5}>
-                <PinInput
-                  autoFocus
-                  colorScheme={verificationError ? 'red' : 'purple'}
-                  focusBorderColor={
-                    verificationError ? 'red.500' : 'brand.purple'
-                  }
-                  isDisabled={isVerifying || errorCount >= 5}
-                  onChange={setOtpValue}
-                  onComplete={verifyOTP}
-                  otp
-                  size={'lg'}
-                  value={otpValue}
-                >
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                  <PinInputField
-                    borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  />
-                </PinInput>
+          <Box pos="relative">
+            <Flex justify="center" gap={1.5}>
+              <PinInput
+                autoFocus
+                colorScheme={verificationError ? 'red' : 'purple'}
+                focusBorderColor={
+                  verificationError ? 'red.500' : 'brand.purple'
+                }
+                isDisabled={isVerifying || timeLeft === 0 || errorCount >= 5}
+                onChange={setOtpValue}
+                onComplete={verifyOTP}
+                otp
+                size={'lg'}
+                value={otpValue}
+              >
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+                <PinInputField
+                  borderColor={verificationError ? 'red.400' : 'gray.400'}
+                />
+              </PinInput>
+            </Flex>
+            {isVerifying && (
+              <Flex
+                pos="absolute"
+                top="0"
+                right="0"
+                bottom="0"
+                left="0"
+                align="center"
+                justify="center"
+                bg="rgba(255, 255, 255, 0.8)"
+              >
+                <Spinner color="purple.500" />
               </Flex>
-              {isVerifying && (
-                <Flex
-                  pos="absolute"
-                  top="0"
-                  right="0"
-                  bottom="0"
-                  left="0"
-                  align="center"
-                  justify="center"
-                  bg="rgba(255, 255, 255, 0.8)"
-                >
-                  <Spinner color="purple.500" />
-                </Flex>
-              )}
-            </Box>
+            )}
+          </Box>
 
+          <VStack w="full" spacing={3}>
             <Text color="#64748B" fontSize="sm" textAlign="center">
               {timeLeft > 0 ? (
                 <>
@@ -275,33 +272,31 @@ export default function VerifyRequest() {
               )}
             </Text>
 
-            <VStack w="full" spacing={2}>
-              <Button
-                w="full"
-                isDisabled={!canResend || resendCooldown > 0}
-                onClick={handleResendCode}
-                size="sm"
-                variant="outline"
-              >
-                {resendCooldown > 0
-                  ? `重新发送 (${resendCooldown}s)`
-                  : '重新发送验证码'}
-              </Button>
+            <Button
+              w="full"
+              isDisabled={!canResend || resendCooldown > 0 || timeLeft === 0}
+              onClick={handleResendCode}
+              size="sm"
+              variant="outline"
+            >
+              {resendCooldown > 0
+                ? `重新发送 (${resendCooldown}s)`
+                : '重新发送验证码'}
+            </Button>
 
-              <Button
-                w="full"
-                onClick={() => router.push('/')}
-                size="sm"
-                variant="ghost"
-              >
-                返回首页
-              </Button>
-            </VStack>
+            <Button
+              w="full"
+              onClick={() => router.push('/')}
+              size="sm"
+              variant="ghost"
+            >
+              返回首页
+            </Button>
+
+            <Text maxW="sm" color="#94A3B8" fontSize="xs" textAlign="center">
+              请检查您的邮箱（包括垃圾邮件文件夹）。如果仍未收到邮件，请点击重新发送。
+            </Text>
           </VStack>
-
-          <Text maxW="sm" color="#94A3B8" fontSize="xs" textAlign="center">
-            请检查您的邮箱（包括垃圾邮件文件夹）。如果仍未收到邮件，请点击重新发送。
-          </Text>
         </VStack>
       </Flex>
     </>
