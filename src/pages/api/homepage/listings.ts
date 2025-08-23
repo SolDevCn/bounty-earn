@@ -14,12 +14,7 @@ interface BountyProps {
   tab?: string;
 }
 
-export async function getListings({
-  statusFilter,
-  userRegion,
-  excludeIds,
-  tab,
-}: BountyProps) {
+export async function getListings({ statusFilter, excludeIds }: BountyProps) {
   const statusFilterQuery = getStatusFilterQuery(statusFilter);
   let orderBy:
     | { deadline: 'asc' | 'desc' }
@@ -41,9 +36,6 @@ export async function getListings({
       winnersAnnouncedAt: 'desc',
     };
   }
-
-  const isTabOpen = tab === 'open';
-  
   let bounties = await prisma.bounties.findMany({
     where: {
       id: {
@@ -53,20 +45,9 @@ export async function getListings({
       isActive: true,
       isPrivate: false,
       isArchived: false,
-      // Filter out hackathon prizes
-      hackathonprize: false,
-      // Apply compensation and language filters
-      OR: [
-        { compensationType: 'fixed', usdValue: { gt: 100 } },
-        { compensationType: 'range', maxRewardAsk: { gt: 100 } },
-        { compensationType: 'variable' },
-      ],
-      language: { in: ['eng', 'sco'] }, //cuz both eng and sco refer to listings in english
       ...statusFilterQuery,
       // Remove region filtering to match /api/listings/ behavior and fix empty homepage
       // ...(!isTabOpen && userRegion ? { region: { in: userRegion } } : {}),
-      // Exclude hackathons
-      Hackathon: null,
     },
     select: {
       id: true,
@@ -145,7 +126,6 @@ export default async function handler(
   const listings = await getListings({
     order,
     statusFilter,
-    userRegion,
     excludeIds,
     tab,
   });

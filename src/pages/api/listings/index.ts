@@ -1,8 +1,8 @@
 import { type BountyType, type Prisma } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 // Remove unused imports for Chinese platform - no region filtering needed
 // import { getToken } from 'next-auth/jwt';
-
 // import { CombinedRegions } from '@/constants/Superteam';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
@@ -138,23 +138,12 @@ export default async function listings(
       isPrivate: false,
       isArchived: false,
       status: 'OPEN',
-      // Filter out hackathon prizes
-      hackathonprize: false,
-      // Apply compensation and language filters for consistency
-      OR: [
-        { compensationType: 'fixed', usdValue: { gt: 100 } },
-        { compensationType: 'range', maxRewardAsk: { gt: 100 } },
-        { compensationType: 'variable' },
-      ],
-      language: { in: ['eng', 'sco'] },
       deadline: {
         gte: deadline,
       },
       type: type || { in: ['bounty', 'project'] },
       ...skillsFilter,
       NOT: { id },
-      // Exclude hackathons
-      Hackathon: null,
       // Remove region filtering for Chinese platform - show all global listings
       // ...(userRegion ? { region: { in: [userRegion, Regions.GLOBAL] } } : {}),
       ...(exclusiveSponsorId ? { sponsorId: exclusiveSponsorId } : {}),
