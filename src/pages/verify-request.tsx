@@ -74,41 +74,35 @@ export default function VerifyRequest() {
 
     try {
       const token = value.trim();
-      const encodedEmail = encodeURIComponent(email);
 
-      // 使用 fetch 来检查验证结果，而不是直接跳转
-      const response = await fetch(
-        `/api/auth/callback/email?token=${token}&email=${encodedEmail}`,
-        {
-          method: 'GET',
-          redirect: 'manual', // 阻止自动重定向
+      // 首先检查验证码是否正确
+      const verifyResponse = await fetch('/api/auth/verify-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          token,
+          email,
+        }),
+      });
 
-      // 更精确的验证结果判断
-      if (response.status === 200) {
-        // 直接验证成功 (不太可能，NextAuth通常返回重定向)
-        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-      } else if (response.status === 302 || response.status === 307) {
-        // 检查重定向目标
-        const location = response.headers.get('Location');
-        if (location && location.includes('/auth/error')) {
-          // 重定向到错误页面 = 验证失败
-          handleVerificationError();
-        } else {
-          // 重定向到其他页面 = 验证成功
-          window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-        }
-      } else if (response.status === 0) {
-        // 可能是 CORS 或网络问题，尝试直接跳转
-        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-      } else {
-        // 其他状态码 = 验证失败
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResult.success) {
+        // 验证码错误，显示错误提示
         handleVerificationError();
+        return;
       }
+
+      // 验证码正确，进行实际的登录流程
+      const encodedEmail = encodeURIComponent(email);
+      window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
+
     } catch (error) {
-      // 网络错误或其他错误
-      handleVerificationError();
+      console.error('Verification error:', error);
+      setIsVerifying(false);
+      setVerificationError('验证过程中出现错误，请稍后重试。');
     }
   };
 
@@ -126,10 +120,19 @@ export default function VerifyRequest() {
         router.push('/');
       }, 3000);
     } else {
-      // 显示错误提示，允许重试
-      setVerificationError(
-        `验证码错误，请重新输入。剩余尝试次数：${5 - newErrorCount}`,
-      );
+      // 显示更友好的错误提示
+      if (newErrorCount === 1) {
+        setVerificationError('验证码不正确，请重新输入。');
+      } else {
+        setVerificationError(
+          `验证码不正确，请重新输入。剩余尝试次数：${5 - newErrorCount}`,
+        );
+      }
+      
+      // 3秒后清除错误提示（但保留错误计数）
+      setTimeout(() => {
+        setVerificationError('');
+      }, 3000);
     }
   };
 
@@ -217,7 +220,12 @@ export default function VerifyRequest() {
           </Circle>
 
           {verificationError && (
-            <Alert borderRadius="md" status="error">
+            <Alert
+              borderRadius="md"
+              status={
+                verificationError.includes('已发送') ? 'success' : 'error'
+              }
+            >
               <AlertIcon />
               <Text fontSize="sm">{verificationError}</Text>
             </Alert>

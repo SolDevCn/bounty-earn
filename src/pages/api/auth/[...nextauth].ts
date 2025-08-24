@@ -63,7 +63,22 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      // 如果是email provider，在这里不做额外验证
+      // 让NextAuth处理token验证，失败时会自动跳转到error页面
+      if (account?.provider === 'email') {
+        const userRecord = await prisma.user.findUnique({
+          where: { email: user.email as string },
+          select: { isBlocked: true },
+        });
+
+        if (userRecord?.isBlocked) {
+          return '/blocked';
+        }
+
+        return true;
+      }
+
       const userRecord = await prisma.user.findUnique({
         where: { email: user.email as string },
         select: { isBlocked: true },
