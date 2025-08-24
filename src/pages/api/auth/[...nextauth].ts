@@ -41,12 +41,59 @@ export const authOptions: NextAuthOptions = {
 
         if (isBlocked) {
           logger.debug('OTP Not Sent, Blocked Email');
+          return; // 静默失败，不泄露邮箱状态
         }
 
-        // 删除该邮箱的所有旧验证码（确保重新发送后旧码作废）
-        await prisma.verificationToken.deleteMany({
-          where: { identifier },
+        // 检查发送频率 - 防止同一邮箱1分钟内重复发送
+        const recentToken = await prisma.verificationToken.findFirst({
+          where: {
+            identifier,
+            expires: {
+              gt: new Date(Date.now() - 60 * 1000), // 1分钟内
+            },
+          },
         });
+
+        if (recentToken) {
+          logger.debug('OTP rate limited for email:', identifier);
+          return; // 静默失败，避免泄露发送状态
+        }
+
+        // 限制每个邮箱最多3个未过期的验证码
+        const tokenCount = await prisma.verificationToken.count({
+          where: {
+            identifier,
+            expires: {
+              gt: new Date(),
+            },
+          },
+        });
+
+        if (tokenCount >= 3) {
+          // 删除最老的验证码
+          const oldestToken = await prisma.verificationToken.findFirst({
+            where: {
+              identifier,
+              expires: {
+                gt: new Date(),
+              },
+            },
+            orderBy: {
+              expires: 'asc',
+            },
+          });
+
+          if (oldestToken) {
+            await prisma.verificationToken.delete({
+              where: {
+                identifier_token: {
+                  identifier: oldestToken.identifier,
+                  token: oldestToken.token,
+                },
+              },
+            });
+          }
+        }
 
         await resend.emails.send({
           from: kashEmail,

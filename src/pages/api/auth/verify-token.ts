@@ -24,14 +24,34 @@ export default async function handler(
 
   const { token, email }: VerifyTokenRequest = req.body;
 
-  if (!token || !email) {
+  // 基本输入验证
+  if (!token || !email || !/^\d{6}$/.test(token)) {
     return res.status(400).json({
       success: false,
-      error: 'Token and email are required',
+      error: 'Invalid token or email format',
     });
   }
 
   try {
+    // 简单的速率限制 - 检查最近尝试次数
+    const recentAttempts = await prisma.verificationToken.count({
+      where: {
+        identifier: email,
+        // 检查最近15分钟内的尝试次数（通过expires字段估算）
+        expires: {
+          gte: new Date(Date.now() - 15 * 60 * 1000),
+        },
+      },
+    });
+
+    // 如果同一邮箱有超过3个未过期的验证码，说明请求过频
+    if (recentAttempts > 3) {
+      return res.status(429).json({
+        success: false,
+        error: 'Too many verification attempts. Please wait before trying again.',
+      });
+    }
+
     // 查找有效的验证码记录
     const verificationRecord = await prisma.verificationToken.findFirst({
       where: {
@@ -50,7 +70,16 @@ export default async function handler(
       });
     }
 
-    // 验证码正确，返回成功
+    // 验证成功后立即删除验证码，防止重复使用
+    await prisma.verificationToken.delete({
+      where: {
+        identifier_token: {
+          identifier: email,
+          token: token,
+        },
+      },
+    });
+
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Verification token check error:', error);
