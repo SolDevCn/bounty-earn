@@ -92,6 +92,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     verifyRequest: '/verify-request',
     newUser: '/api/auth/new-user',
+    error: '/auth/error',
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
