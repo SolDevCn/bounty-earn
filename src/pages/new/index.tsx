@@ -269,9 +269,7 @@ export default function NewProfilePage({
                   />
                 </Box>
                 <Box flexDir={'column'} gap={5} display={'flex'} px={4}>
-                  <BulletPoint type="SPONSOR">
-                    每周吸引 10,000 位访问
-                  </BulletPoint>
+                  <BulletPoint type="SPONSOR">，做任务，赢赏金！</BulletPoint>
                   <BulletPoint type="SPONSOR">
                     连接 Solana 华语区人才和项目方
                   </BulletPoint>

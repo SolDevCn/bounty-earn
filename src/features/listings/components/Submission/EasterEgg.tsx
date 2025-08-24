@@ -84,17 +84,17 @@ export const EasterEgg = ({ isOpen, onClose, isProject }: Props) => {
             lineHeight="1"
             textAlign="center"
           >
-            {isProject ? '项目' : '提案'} 成功提交！
+            {isProject ? '项目' : '作品'} 成功提交！
           </Text>
           <Text
             mt={[8, 5]}
             color="white"
-            fontSize={[38, 48]}
+            fontSize={[32, 40]}
             lineHeight="1"
             textAlign="center"
             opacity="0.6"
           >
-            海绵宝宝发来贺电💃 💃
+            海绵宝宝发来贺电
           </Text>
         </Container>
         <AbsoluteCenter
