@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
 
         if (isBlocked) {
           logger.debug('OTP Not Sent, Blocked Email');
-          return; // 静默失败，不泄露邮箱状态
+          throw new Error('BLOCKED_EMAIL'); // 替换静默失败，提供用户反馈
         }
 
         // 检查发送频率 - 防止同一邮箱1分钟内重复发送
@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
 
         if (recentToken) {
           logger.debug('OTP rate limited for email:', identifier);
-          return; // 静默失败，避免泄露发送状态
+          throw new Error('RATE_LIMITED'); // 替换静默失败，提供用户反馈
         }
 
         // 限制每个邮箱最多3个未过期的验证码

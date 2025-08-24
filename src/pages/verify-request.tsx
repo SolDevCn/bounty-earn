@@ -82,33 +82,7 @@ export default function VerifyRequest() {
     setVerificationError('');
 
     try {
-      // 首先检查验证码是否正确
-      const verifyResponse = await fetch('/api/auth/verify-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          email,
-        }),
-      });
-
-      const verifyResult = await verifyResponse.json();
-
-      if (verifyResponse.status === 429) {
-        setVerificationError('验证请求过于频繁，请稍后再试');
-        setIsVerifying(false);
-        return;
-      }
-
-      if (!verifyResult.success) {
-        setVerificationError(verifyResult.error || '验证码无效或已过期');
-        handleVerificationError();
-        return;
-      }
-
-      // 验证码正确，进行实际的登录流程
+      // 直接跳转到 NextAuth 验证流程，避免双重验证导致的竞态条件
       const encodedEmail = encodeURIComponent(email);
       window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
 

@@ -2,8 +2,8 @@ import { Box, Show, Text } from '@chakra-ui/react';
 import Image from 'next/image';
 import React from 'react';
 
-import MobileBanner from '@/public/assets/home/display/sign-banner-mobile.jpg';
 import DesktopBanner from '@/public/assets/home/display/sign-banner.jpg';
+import MobileBanner from '@/public/assets/home/display/sign-banner-mobile.jpg';
 
 export function HomeBanner() {
   return (
@@ -56,13 +56,13 @@ export function HomeBanner() {
       <Text
         pos="relative"
         zIndex={1}
+        maxW={{ base: '70%', md: '100%' }}
         color="white"
         fontSize={{ base: 'xl', md: '25px' }}
         fontWeight={'700'}
         lineHeight={'120%'}
-        maxW={{ base: '70%', md: '100%' }}
       >
-        为你的 Solana 项目发掘人才
+        为你的Solana项目发掘人才
         <br />
       </Text>
       <Text
@@ -74,7 +74,7 @@ export function HomeBanner() {
         fontSize={{ base: '13px', md: 'lg' }}
         lineHeight={'130%'}
       >
-        Solar 華語區人才網络
+        Solar华语区人才网络
       </Text>
     </Box>
   );
