@@ -85,12 +85,25 @@ export default function VerifyRequest() {
         },
       );
 
-      // 检查响应状态
-      if (response.status === 200 || response.status === 0) {
-        // 验证成功，跳转
+      // 更精确的验证结果判断
+      if (response.status === 200) {
+        // 直接验证成功 (不太可能，NextAuth通常返回重定向)
+        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
+      } else if (response.status === 302 || response.status === 307) {
+        // 检查重定向目标
+        const location = response.headers.get('Location');
+        if (location && location.includes('/auth/error')) {
+          // 重定向到错误页面 = 验证失败
+          handleVerificationError();
+        } else {
+          // 重定向到其他页面 = 验证成功
+          window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
+        }
+      } else if (response.status === 0) {
+        // 可能是 CORS 或网络问题，尝试直接跳转
         window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
       } else {
-        // 验证失败
+        // 其他状态码 = 验证失败
         handleVerificationError();
       }
     } catch (error) {
@@ -274,7 +287,7 @@ export default function VerifyRequest() {
 
             <Button
               w="full"
-              isDisabled={!canResend || resendCooldown > 0 || timeLeft === 0}
+              isDisabled={!canResend || resendCooldown > 0}
               onClick={handleResendCode}
               size="sm"
               variant="outline"
