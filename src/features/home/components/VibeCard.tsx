@@ -37,9 +37,9 @@ export const VibeCard = () => {
   const [vibeCount, setVibeCount] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('vibeCount');
-      return saved ? parseInt(saved, 10) : 13;
+      return saved ? parseInt(saved, 10) : 545;
     }
-    return 13;
+    return 545;
   });
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [userIds, setUserIds] = useState<string[]>(() => {
@@ -96,7 +96,7 @@ export const VibeCard = () => {
       const { vibeCount: newVibeCount, userIds: newUserIds } = JSON.parse(
         event.data,
       );
-      setVibeCount(newVibeCount + 13);
+      setVibeCount(newVibeCount + 545);
       setUserIds(newUserIds);
     };
     setWs(newWs);
@@ -114,17 +114,17 @@ export const VibeCard = () => {
       // 检查防抖
       const lastClickTime = localStorage.getItem('lastVibeClickTime');
       const now = Date.now();
-      
+
       if (lastClickTime && now - parseInt(lastClickTime, 10) < 1000) {
         return; // 1秒内重复点击，忽略
       }
 
       setIsLoading(true);
       localStorage.setItem('lastVibeClickTime', now.toString());
-      
+
       ws.send(JSON.stringify({ userId: user.id, action: 'vibe' }));
       shootConfetti();
-      
+
       // 重置加载状态
       setTimeout(() => setIsLoading(false), 1000);
     }
@@ -174,17 +174,17 @@ export const VibeCard = () => {
       <Divider mx={4} orientation="vertical" />
       <AuthWrapper>
         <Button
-          bg="white"
-          borderColor="brand.slate.200"
+          maxW={40}
+          px={10}
           color="brand.slate.500"
           fontSize="sm"
           fontWeight={500}
+          bg="white"
+          borderColor="brand.slate.200"
           isDisabled={!user}
           isLoading={isLoading}
           loadingText="贡献中"
-          maxW={40}
           onClick={handleVibeClick}
-          px={10}
           variant="outline"
         >
           点击一起贡献

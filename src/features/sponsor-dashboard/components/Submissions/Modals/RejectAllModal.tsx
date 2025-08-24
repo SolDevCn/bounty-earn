@@ -58,7 +58,7 @@ export const RejectAllSubmissionModal = ({
           <Text mt={3} color="brand.slate.500">
             {rejectingAll
               ? `您即将拒绝该项目列表中所有 ${submissionIds.length}个剩余的申请。此操作无法撤销。您确定要继续吗？`
-              : `您即将拒绝 ${submissionIds.length} 个申请。他们将通过电子邮件收到通知。`}
+              : `您即将拒绝 ${submissionIds.length} 个申请。`}
           </Text>
           <br />
           <Button

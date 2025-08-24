@@ -16,6 +16,7 @@ import {
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
+import { signIn } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
 import { EmailIcon } from '@/svg/email';
@@ -28,6 +29,7 @@ export default function VerifyRequest() {
   const [timeLeft, setTimeLeft] = useState(10 * 60); // 10分钟有效期
   const [canResend, setCanResend] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
   const router = useRouter();
 
@@ -69,46 +71,51 @@ export default function VerifyRequest() {
   const verifyOTP = async (value: string) => {
     if (isVerifying || !value || value.length !== 6) return;
 
+    // 基本的输入验证
+    const token = value.trim();
+    if (!/^\d{6}$/.test(token)) {
+      setVerificationError('请输入6位数字验证码');
+      return;
+    }
+
     setIsVerifying(true);
     setVerificationError('');
 
     try {
-      const token = value.trim();
-      const encodedEmail = encodeURIComponent(email);
-
-      // 使用 fetch 来检查验证结果，而不是直接跳转
-      const response = await fetch(
-        `/api/auth/callback/email?token=${token}&email=${encodedEmail}`,
-        {
-          method: 'GET',
-          redirect: 'manual', // 阻止自动重定向
+      // 首先检查验证码是否正确
+      const verifyResponse = await fetch('/api/auth/verify-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          token,
+          email,
+        }),
+      });
 
-      // 更精确的验证结果判断
-      if (response.status === 200) {
-        // 直接验证成功 (不太可能，NextAuth通常返回重定向)
-        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-      } else if (response.status === 302 || response.status === 307) {
-        // 检查重定向目标
-        const location = response.headers.get('Location');
-        if (location && location.includes('/auth/error')) {
-          // 重定向到错误页面 = 验证失败
-          handleVerificationError();
-        } else {
-          // 重定向到其他页面 = 验证成功
-          window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-        }
-      } else if (response.status === 0) {
-        // 可能是 CORS 或网络问题，尝试直接跳转
-        window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
-      } else {
-        // 其他状态码 = 验证失败
-        handleVerificationError();
+      const verifyResult = await verifyResponse.json();
+
+      if (verifyResponse.status === 429) {
+        setVerificationError('验证请求过于频繁，请稍后再试');
+        setIsVerifying(false);
+        return;
       }
+
+      if (!verifyResult.success) {
+        setVerificationError(verifyResult.error || '验证码无效或已过期');
+        handleVerificationError();
+        return;
+      }
+
+      // 验证码正确，进行实际的登录流程
+      const encodedEmail = encodeURIComponent(email);
+      window.location.href = `/api/auth/callback/email?token=${token}&email=${encodedEmail}`;
+
     } catch (error) {
-      // 网络错误或其他错误
-      handleVerificationError();
+      console.error('Verification error:', error);
+      setIsVerifying(false);
+      setVerificationError('网络错误，请稍后重试');
     }
   };
 
@@ -126,10 +133,19 @@ export default function VerifyRequest() {
         router.push('/');
       }, 3000);
     } else {
-      // 显示错误提示，允许重试
-      setVerificationError(
-        `验证码错误，请重新输入。剩余尝试次数：${5 - newErrorCount}`,
-      );
+      // 显示更友好的错误提示
+      if (newErrorCount === 1) {
+        setVerificationError('验证码不正确，请重新输入。');
+      } else {
+        setVerificationError(
+          `验证码不正确，请重新输入。剩余尝试次数：${5 - newErrorCount}`,
+        );
+      }
+      
+      // 3秒后清除错误提示（但保留错误计数）
+      setTimeout(() => {
+        setVerificationError('');
+      }, 3000);
     }
   };
 
@@ -140,8 +156,9 @@ export default function VerifyRequest() {
   };
 
   const handleResendCode = async () => {
-    if (!canResend || resendCooldown > 0) return;
+    if (!canResend || resendCooldown > 0 || resendLoading) return;
 
+    setResendLoading(true);
     setResendCooldown(60); // 60秒冷却时间
     setTimeLeft(10 * 60); // 重置10分钟倒计时
     setCanResend(false);
@@ -150,31 +167,23 @@ export default function VerifyRequest() {
     setErrorCount(0); // 重置错误计数
 
     try {
-      // 重新发送验证码请求
-      const response = await fetch('/api/auth/signin/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          redirect: false,
-        }),
+      // 使用NextAuth的signIn方法重新发送验证码
+      await signIn('email', { 
+        email, 
+        redirect: false 
       });
 
-      if (response.ok) {
-        setVerificationError('新的验证码已发送到您的邮箱。');
-        // 3秒后清除成功消息
-        setTimeout(() => {
-          setVerificationError('');
-        }, 3000);
-      } else {
-        throw new Error('Failed to send verification code');
-      }
+      setVerificationError('新的验证码已发送到您的邮箱');
+      // 3秒后清除成功消息
+      setTimeout(() => {
+        setVerificationError('');
+      }, 3000);
     } catch (error) {
       console.error('Failed to resend verification code:', error);
-      setVerificationError('发送验证码失败，请稍后重试。');
+      setVerificationError('发送验证码失败，请稍后重试');
       setResendCooldown(0); // 重置冷却时间
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -217,7 +226,12 @@ export default function VerifyRequest() {
           </Circle>
 
           {verificationError && (
-            <Alert borderRadius="md" status="error">
+            <Alert
+              borderRadius="md"
+              status={
+                verificationError.includes('已发送') ? 'success' : 'error'
+              }
+            >
               <AlertIcon />
               <Text fontSize="sm">{verificationError}</Text>
             </Alert>
