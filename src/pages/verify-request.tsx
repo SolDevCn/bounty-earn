@@ -102,26 +102,62 @@ export default function VerifyRequest() {
     }
   }, [router]);
 
-  // 定期同步状态（30秒一次）
+  // 智能状态同步策略 - 基于冷却时间动态调整频率
   useEffect(() => {
     if (!email) return;
 
-    const syncInterval = setInterval(async () => {
-      await refreshStatus();
-    }, 30000); // 30秒同步一次
+    let syncInterval: NodeJS.Timeout;
 
-    return () => clearInterval(syncInterval);
-  }, [email]);
+    const setupSyncInterval = () => {
+      // 清除现有定时器
+      if (syncInterval) clearInterval(syncInterval);
 
-  // 重新发送冷却倒计时
+      // 根据冷却剩余时间决定同步频率
+      let interval = 30000; // 默认30秒
+
+      if (resendCooldown > 0) {
+        if (resendCooldown <= 3) {
+          // 最后3秒：每秒同步，确保精确
+          interval = 1000;
+        } else if (resendCooldown <= 10) {
+          // 最后10秒：每3秒同步
+          interval = 3000;
+        } else if (resendCooldown <= 30) {
+          // 最后30秒：每10秒同步
+          interval = 10000;
+        }
+        // 超过30秒：保持默认30秒同步
+      }
+
+      syncInterval = setInterval(async () => {
+        await refreshStatus();
+      }, interval);
+    };
+
+    // 初始化同步
+    setupSyncInterval();
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  }, [email, resendCooldown]); // 当冷却时间变化时重新设置间隔
+
+  // 重新发送冷却倒计时 + 智能状态刷新
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setInterval(() => {
         setResendCooldown((prev) => {
           const newValue = Math.max(0, prev - 1);
-          if (newValue === 0) {
+          
+          // 倒计时结束时主动触发状态刷新
+          if (prev > 0 && newValue === 0) {
             setCanResend(true);
+            // 延迟500ms刷新状态，确保服务端状态已更新
+            setTimeout(() => {
+              refreshStatus();
+            }, 500);
           }
+          
           return newValue;
         });
       }, 1000);
@@ -244,7 +280,7 @@ export default function VerifyRequest() {
     if (newErrorCount >= 5) {
       // 5次错误后提供明确的下一步指引
       setVerificationError(
-        '验证尝试次数过多，请选择以下方式：\n' +
+        '验证尝试次数过多，请选择以下方式：\n\n' +
           '• 等待 10 分钟后重新尝试\n' +
           '• 更换其他邮箱地址\n' +
           '• 检查垃圾邮件文件夹\n' +
@@ -277,7 +313,14 @@ export default function VerifyRequest() {
 
 
   const handleResendCode = async () => {
-    if (!canResend || resendCooldown > 0 || resendLoading) return;
+    // 如果按钮显示可点击但实际上还在冷却，先刷新状态
+    if (!canResend || resendLoading) return;
+    
+    if (resendCooldown > 0) {
+      // 冷却中但用户点击了，可能是状态不同步，立即刷新
+      await refreshStatus();
+      return;
+    }
 
     setResendLoading(true);
     setVerificationError('');
@@ -361,7 +404,9 @@ export default function VerifyRequest() {
               }
             >
               <AlertIcon />
-              <Text fontSize="sm">{verificationError}</Text>
+              <Text fontSize="sm" whiteSpace="pre-line">
+                {verificationError}
+              </Text>
             </Alert>
           )}
 
