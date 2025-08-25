@@ -252,6 +252,24 @@ export default function VerifyRequest() {
     };
   };
 
+  // 智能重发按钮文案 - 基于验证码状态动态显示
+  const getResendButtonText = () => {
+    if (resendCooldown > 0) {
+      return `重新发送 (${resendCooldown}s)`;
+    }
+    
+    if (resendLoading) {
+      return '发送中...';
+    }
+    
+    // 根据验证码状态提供智能提示
+    if (!canResend) {
+      return '验证码已过期，稍等可重发'; // 在30s容差期内的状态
+    }
+    
+    return '重新发送验证码';
+  };
+
   // 发送邮件错误码到用户文案的映射
   const getSendErrorMessage = (
     errorCode: string,
@@ -480,14 +498,13 @@ export default function VerifyRequest() {
 
             <Button
               w="full"
-              isDisabled={!canResend || resendCooldown > 0}
+              isDisabled={!canResend || resendCooldown > 0 || resendLoading}
+              isLoading={resendLoading}
               onClick={handleResendCode}
               size="sm"
               variant="outline"
             >
-              {resendCooldown > 0
-                ? `重新发送 (${resendCooldown}s)`
-                : '重新发送验证码'}
+              {getResendButtonText()}
             </Button>
 
             <Button

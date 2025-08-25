@@ -4,7 +4,7 @@ import { prisma } from '@/prisma';
 
 // 验证码时间配置常量 - 与nextauth.ts保持一致
 const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
-const EXPIRE_TOLERANCE_MS = 30 * 1000;     // 验证容差30秒（仅验码时宽松）
+const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {
   canSend: boolean;
@@ -26,7 +26,7 @@ interface OtpStatusResponse {
   error?: string;
 }
 
-// 核心时间判断函数 - 与nextauth.ts完全一致
+// 核心时间判断函数 - 与nextauth.ts完全一致（验证严格0容差，重发宽松容差）
 function checkVerificationTokenStatus(
   token: { createdAt: Date; expires: Date } | null,
   serverNow: number
@@ -41,46 +41,48 @@ function checkVerificationTokenStatus(
   }
   
   const rateLimitEndTime = token.createdAt.getTime() + RATE_LIMIT_MS;
-  const expireTimeWithTolerance = token.expires.getTime() + EXPIRE_TOLERANCE_MS;
+  const strictExpireTime = token.expires.getTime();                        // 🔑 验证严格0容差
+  const resendAllowTime = token.expires.getTime() + RESEND_TOLERANCE_MS;    // 🔑 重发宽松30s容差
   
-  // 情况2: 发送冷却中（严格判断，0容差，优先级最高）
+  // 优先级1: 发送频率限制（最高优先级）
   if (serverNow < rateLimitEndTime) {
     const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
     return {
       canSend: false,
-      canVerify: serverNow <= expireTimeWithTolerance, // 可能还能验证
+      canVerify: serverNow <= strictExpireTime, // 🔑 验证使用严格时间
       message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
       remainingSeconds,
     };
   }
   
-  // 情况3: 验证码过期（宽松判断，+30s容差）
-  if (serverNow > expireTimeWithTolerance) {
+  // 优先级2: 验证码过期（验证严格0容差，重发宽松容差）
+  if (serverNow > strictExpireTime) {
+    const canResend = serverNow > resendAllowTime;
     return {
-      canSend: true,  // 过期了可以重新发送
-      canVerify: false,
-      message: '验证码已过期，请重新获取',
+      canSend: canResend,
+      canVerify: false, // 🔑 过期立即不可验证
+      message: canResend ? '验证码已过期，可重新获取' : '验证码已过期，请稍等再重新获取',
     };
   }
   
-  // 情况4: 正常状态
+  // 优先级3: 正常有效状态
   return {
-    canSend: true,
+    canSend: true,  // 有效期内也允许重发（用户体验考虑）
     canVerify: true,
     message: '验证码有效',
   };
 }
 
-// 计算验证码过期剩余时间（宽松边界）
+// 计算验证码过期剩余时间（严格边界，用于用户展示）
 function calculateTokenExpireSeconds(
   token: { expires: Date } | null,
   serverNow: number
 ): number {
   if (!token) return 0;
   
-  // 使用宽松时间（+30s容差）计算剩余时间
-  const expireTimeWithTolerance = token.expires.getTime() + EXPIRE_TOLERANCE_MS;
-  const remaining = expireTimeWithTolerance - serverNow;
+  // 🔑 使用严格时间（0容差）计算剩余时间 - 与验证逻辑一致
+  const strictExpireTime = token.expires.getTime();
+  const remaining = strictExpireTime - serverNow;
   
   return Math.max(0, Math.ceil(remaining / 1000));
 }
