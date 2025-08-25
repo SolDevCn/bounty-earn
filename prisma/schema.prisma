@@ -538,6 +538,10 @@ model VerificationToken {
   createdAt  DateTime @default(now())
 
   @@unique([identifier, token])
+  // 🚀 性能优化索引
+  @@index([identifier, createdAt])  // 查询最新验证码 (orderBy createdAt desc)
+  @@index([identifier, expires])   // 查询未过期验证码 (where expires > now)
+  @@index([expires])               // 清理过期验证码任务 (where expires < now)
 }
 
 model Hackathon {

@@ -208,9 +208,20 @@ export default function VerifyRequest() {
         }, 1500); // 给用户1.5秒看到成功消息
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      // 🔧 增强网络错误处理
+      console.error('Network error during verification:', error);
       setIsVerifying(false);
-      setVerificationError('网络错误，请稍后重试');
+      
+      // 根据错误类型提供具体的用户提示
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setVerificationError('网络连接异常，请检查网络后重试');
+      } else if (error instanceof Error && error.message.includes('timeout')) {
+        setVerificationError('请求超时，请重试或检查网络连接');
+      } else if (error instanceof Error && error.message.includes('abort')) {
+        setVerificationError('请求被中断，请重试');
+      } else {
+        setVerificationError('验证过程出现异常，请重试或刷新页面');
+      }
     }
   };
 
@@ -367,8 +378,18 @@ export default function VerifyRequest() {
         }, 10000);
       }
     } catch (error) {
-      console.error('Failed to resend verification code:', error);
-      setVerificationError('发送验证码失败，请稍后重试');
+      // 🔧 增强重发验证码的网络错误处理
+      console.error('Network error during resend:', error);
+      
+      // 根据错误类型提供具体的用户提示
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setVerificationError('网络连接异常，无法发送验证码，请检查网络后重试');
+      } else if (error instanceof Error && error.message.includes('timeout')) {
+        setVerificationError('发送请求超时，请重试或检查网络连接');
+      } else {
+        setVerificationError('发送验证码失败，请检查网络连接后重试');
+      }
+      
       // 即使出错也尝试刷新状态
       await refreshStatus();
     } finally {

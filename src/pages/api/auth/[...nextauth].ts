@@ -241,7 +241,7 @@ export const authOptions: NextAuthOptions = {
           where: {
             identifier: normalizedEmail,
             expires: {
-              gt: new Date(),
+              gt: new Date(serverNow), // 🔑 使用统一时间基准
             },
           },
         });
@@ -252,7 +252,7 @@ export const authOptions: NextAuthOptions = {
             where: {
               identifier: normalizedEmail,
               expires: {
-                gt: new Date(),
+                gt: new Date(serverNow), // 🔑 使用统一时间基准
               },
             },
             orderBy: {
