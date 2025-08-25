@@ -56,8 +56,8 @@ function checkVerificationTokenStatus(
   }
   
   // 优先级2: 验证码过期（验证严格0容差，重发宽松容差）
-  if (serverNow > strictExpireTime) {
-    const canResend = serverNow > resendAllowTime;
+  if (serverNow >= strictExpireTime) {  // 🔑 使用 >= 确保恰好过期时也不可验证
+    const canResend = serverNow >= resendAllowTime;  // 🔑 使用 >= 确保恰好30秒时可重发
     return {
       canSend: canResend,
       canVerify: false, // 🔑 过期立即不可验证
