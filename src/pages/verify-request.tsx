@@ -26,12 +26,62 @@ export default function VerifyRequest() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState('');
   const [otpValue, setOtpValue] = useState('');
-  const [timeLeft, setTimeLeft] = useState(10 * 60); // 10分钟有效期
+  // 移除了timeLeft，不再显示验证码有效期倒计时
   const [canResend, setCanResend] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
+  // 移除了serverTimeOffset，当前不需要客户端时间同步
   const router = useRouter();
+
+  // 状态查询相关接口
+  interface OtpStatusData {
+    canSend: boolean;
+    canVerify: boolean;
+    resendCooldownSeconds: number;
+    tokenExpireSeconds: number;
+    serverTimestamp: number;
+    message: string;
+  }
+
+  // 查询验证码状态
+  const fetchOtpStatus = async (): Promise<OtpStatusData | null> => {
+    if (!email) return null;
+
+    try {
+      const response = await fetch(
+        `/api/auth/otp-status?email=${encodeURIComponent(email)}`,
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        // 移除了时间偏移计算，当前只需要状态数据
+        return result.data;
+      } else {
+        console.error('Failed to fetch OTP status:', result.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('OTP status query error:', error);
+      return null;
+    }
+  };
+
+  // 刷新状态并更新UI
+  const refreshStatus = async () => {
+    const status = await fetchOtpStatus();
+    if (status) {
+      setResendCooldown(status.resendCooldownSeconds);
+      setCanResend(status.canSend);
+
+      // 如果验证码已过期，显示提示
+      if (!status.canVerify && status.tokenExpireSeconds === 0) {
+        setVerificationError('验证码已过期，请重新获取');
+      }
+    }
+  };
+
+  // 移除了getServerTime函数，当前不需要
 
   useEffect(() => {
     const storedEmail = localStorage.getItem('emailForSignIn');
@@ -41,34 +91,44 @@ export default function VerifyRequest() {
       setEmail(normalizedEmail);
       // 更新localStorage中的邮箱为规范化格式
       localStorage.setItem('emailForSignIn', normalizedEmail);
+
+      // 页面加载时立即获取最新状态
+      setTimeout(() => {
+        refreshStatus();
+      }, 100); // 稍微延迟，确保状态已设置
     } else {
       // 如果没有存储的邮箱，说明用户直接访问了这个页面
       router.push('/');
     }
   }, [router]);
 
-  // 验证码有效期倒计时
+  // 定期同步状态（30秒一次）
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-      // 验证码过期，显示提示
-      setVerificationError('验证码已过期，请重新发送验证码。');
-    }
-    return undefined;
-  }, [timeLeft]);
+    if (!email) return;
 
-  // 重发验证码冷却时间
+    const syncInterval = setInterval(async () => {
+      await refreshStatus();
+    }, 30000); // 30秒同步一次
+
+    return () => clearInterval(syncInterval);
+  }, [email]);
+
+  // 重新发送冷却倒计时
   useEffect(() => {
     if (resendCooldown > 0) {
-      const timer = setTimeout(
-        () => setResendCooldown(resendCooldown - 1),
-        1000,
-      );
-      return () => clearTimeout(timer);
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => {
+          const newValue = Math.max(0, prev - 1);
+          if (newValue === 0) {
+            setCanResend(true);
+          }
+          return newValue;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
     }
+    // 显式返回undefined以满足TypeScript要求
     return undefined;
   }, [resendCooldown]);
 
@@ -100,10 +160,17 @@ export default function VerifyRequest() {
       }
 
       if (result?.ok) {
-        // 验证成功，跳转到首页或指定页面
-        window.location.href = '/';
+        // 验证成功，显示成功消息并平滑跳转
+        setVerificationError('验证成功，正在跳转...');
+        
+        // 清除存储的邮箱信息
+        localStorage.removeItem('emailForSignIn');
+        
+        // 使用Next.js路由进行SPA跳转，保持应用状态
+        setTimeout(() => {
+          router.push('/');
+        }, 1500); // 给用户1.5秒看到成功消息
       }
-
     } catch (error) {
       console.error('Verification error:', error);
       setIsVerifying(false);
@@ -132,10 +199,12 @@ export default function VerifyRequest() {
   };
 
   // 解析频率限制中的剩余时间
-  const parseRateLimitInfo = (error: string): { remaining: number; message: string } => {
+  const parseRateLimitInfo = (
+    error: string,
+  ): { remaining: number; message: string } => {
     const match = error.match(/RATE_LIMITED:(\d+)/);
-    if (match) {
-      const remaining = parseInt(match[1]);
+    if (match && match[1]) {
+      const remaining = parseInt(match[1], 10);
       return {
         remaining,
         message: `请求过于频繁，请 ${remaining} 秒后重试`,
@@ -148,7 +217,9 @@ export default function VerifyRequest() {
   };
 
   // 发送邮件错误码到用户文案的映射
-  const getSendErrorMessage = (errorCode: string): { message: string; remaining?: number } => {
+  const getSendErrorMessage = (
+    errorCode: string,
+  ): { message: string; remaining?: number } => {
     if (errorCode.startsWith('RATE_LIMITED')) {
       const { remaining, message } = parseRateLimitInfo(errorCode);
       return { message, remaining };
@@ -174,12 +245,12 @@ export default function VerifyRequest() {
       // 5次错误后提供明确的下一步指引
       setVerificationError(
         '验证尝试次数过多，请选择以下方式：\n' +
-        '• 等待 10 分钟后重新尝试\n' +
-        '• 更换其他邮箱地址\n' +
-        '• 检查垃圾邮件文件夹\n' +
-        '• 联系客服获取帮助'
+          '• 等待 10 分钟后重新尝试\n' +
+          '• 更换其他邮箱地址\n' +
+          '• 检查垃圾邮件文件夹\n' +
+          '• 联系客服获取帮助',
       );
-      
+
       // 10秒后跳转到主页
       setTimeout(() => {
         localStorage.removeItem('emailForSignIn');
@@ -187,67 +258,58 @@ export default function VerifyRequest() {
       }, 10000);
     } else {
       // 根据错误码显示对应的错误信息
-      let errorMessage = errorCode ? getErrorMessage(errorCode) : '验证码不正确，请重新输入';
-      
+      let errorMessage = errorCode
+        ? getErrorMessage(errorCode)
+        : '验证码不正确，请重新输入';
+
       if (newErrorCount > 1) {
         errorMessage += `。剩余尝试次数：${5 - newErrorCount}`;
       }
-      
+
       setVerificationError(errorMessage);
-      
-      // 3秒后清除错误提示（但保留错误计数）
+
+      // 10秒后清除错误提示（但保留错误计数）
       setTimeout(() => {
         setVerificationError('');
-      }, 3000);
+      }, 10000);
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   const handleResendCode = async () => {
     if (!canResend || resendCooldown > 0 || resendLoading) return;
 
     setResendLoading(true);
-    setResendCooldown(60); // 60秒冷却时间
-    setTimeLeft(10 * 60); // 重置10分钟倒计时
-    setCanResend(false);
     setVerificationError('');
     setOtpValue(''); // 清空输入框
     setErrorCount(0); // 重置错误计数
 
     try {
       // 使用NextAuth的signIn方法重新发送验证码
-      const result = await signIn('email', { 
-        email, 
-        redirect: false 
+      const result = await signIn('email', {
+        email,
+        redirect: false,
       });
 
+      // 不管成功还是失败，都查询最新状态
+      await refreshStatus();
+
       if (result?.error) {
-        // 处理发送错误
+        // 处理发送错误（向后兼容现有错误处理）
         const errorInfo = getSendErrorMessage(result.error);
         setVerificationError(errorInfo.message);
-        
-        // 如果是频率限制，使用服务端返回的剩余时间
-        if (errorInfo.remaining) {
-          setResendCooldown(errorInfo.remaining);
-        } else if (!result.error.startsWith('RATE_LIMITED')) {
-          setResendCooldown(0);
-        }
       } else {
         setVerificationError('新的验证码已发送到您的邮箱');
-        // 3秒后清除成功消息
+        // 10秒后清除成功消息
         setTimeout(() => {
           setVerificationError('');
-        }, 3000);
+        }, 10000);
       }
     } catch (error) {
       console.error('Failed to resend verification code:', error);
       setVerificationError('发送验证码失败，请稍后重试');
-      setResendCooldown(0); // 重置冷却时间
+      // 即使出错也尝试刷新状态
+      await refreshStatus();
     } finally {
       setResendLoading(false);
     }
@@ -311,7 +373,7 @@ export default function VerifyRequest() {
                 focusBorderColor={
                   verificationError ? 'red.500' : 'brand.purple'
                 }
-                isDisabled={isVerifying || timeLeft === 0 || errorCount >= 5}
+                isDisabled={isVerifying || errorCount >= 5}
                 onChange={setOtpValue}
                 onComplete={verifyOTP}
                 otp
@@ -319,34 +381,34 @@ export default function VerifyRequest() {
                 value={otpValue}
               >
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
                 <PinInputField
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
                   borderColor={verificationError ? 'red.400' : 'gray.400'}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
                 />
               </PinInput>
             </Flex>
@@ -368,13 +430,7 @@ export default function VerifyRequest() {
 
           <VStack w="full" spacing={3}>
             <Text color="#64748B" fontSize="sm" textAlign="center">
-              {timeLeft > 0 ? (
-                <>
-                  验证码将在 <strong>{formatTime(timeLeft)}</strong> 后过期
-                </>
-              ) : (
-                '验证码已过期'
-              )}
+              请输入收到的6位验证码
             </Text>
 
             <Button

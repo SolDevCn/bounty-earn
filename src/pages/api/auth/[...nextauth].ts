@@ -13,6 +13,63 @@ import {
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 
+// 验证码时间配置常量
+const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
+const TOKEN_EXPIRE_MS = 10 * 60 * 1000;   // 10分钟有效期
+const EXPIRE_TOLERANCE_MS = 30 * 1000;     // 验证容差30秒（仅验码时宽松）
+
+interface TimeStatus {
+  canSend: boolean;
+  canVerify: boolean;
+  message: string;
+  remainingSeconds?: number;
+}
+
+// 核心时间判断函数 - 统一时间基准原则
+function checkVerificationTokenStatus(
+  token: { createdAt: Date; expires: Date } | null,
+  serverNow: number
+): TimeStatus {
+  // 情况1: 没有token，可以发送
+  if (!token) {
+    return {
+      canSend: true,
+      canVerify: false,
+      message: '可以发送验证码',
+    };
+  }
+  
+  const rateLimitEndTime = token.createdAt.getTime() + RATE_LIMIT_MS;
+  const expireTimeWithTolerance = token.expires.getTime() + EXPIRE_TOLERANCE_MS;
+  
+  // 情况2: 发送冷却中（严格判断，0容差，优先级最高）
+  if (serverNow < rateLimitEndTime) {
+    const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
+    return {
+      canSend: false,
+      canVerify: serverNow <= expireTimeWithTolerance, // 可能还能验证
+      message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
+      remainingSeconds,
+    };
+  }
+  
+  // 情况3: 验证码过期（宽松判断，+30s容差）
+  if (serverNow > expireTimeWithTolerance) {
+    return {
+      canSend: true,  // 过期了可以重新发送
+      canVerify: false,
+      message: '验证码已过期，请重新获取',
+    };
+  }
+  
+  // 情况4: 正常状态
+  return {
+    canSend: true,
+    canVerify: true,
+    message: '验证码有效',
+  };
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
@@ -40,20 +97,27 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // 统一时间基准 - 同一流程内使用同一个serverNow
+          const serverNow = Date.now();
+          
           // 使用事务确保验证码一次性消费的原子性
           return await prisma.$transaction(async (tx) => {
-            // 查找有效的验证码
+            // 查找匹配的验证码（不检查过期，由统一逻辑处理）
             const verificationRecord = await tx.verificationToken.findFirst({
               where: {
                 identifier: normalizedEmail,
                 token: code,
-                expires: {
-                  gt: new Date(), // 未过期
-                },
               },
             });
 
             if (!verificationRecord) {
+              throw new Error('invalid_code');
+            }
+            
+            // 使用核心逻辑函数进行统一验证（宽松判断，+30s容差）
+            const timeStatus = checkVerificationTokenStatus(verificationRecord, serverNow);
+            
+            if (!timeStatus.canVerify) {
               throw new Error('invalid_or_expired_code');
             }
 
@@ -147,24 +211,27 @@ export const authOptions: NextAuthOptions = {
           throw new Error('BLOCKED_EMAIL'); // 替换静默失败，提供用户反馈
         }
 
-        // 检查发送频率 - 防止同一邮箱1分钟内重复发送
+        // 统一时间基准 - 同一流程内使用同一个serverNow
+        const serverNow = Date.now();
+        
+        // 检查发送频率 - 基于createdAt字段进行严格判断（0容差）
         const recentToken = await prisma.verificationToken.findFirst({
           where: {
             identifier: normalizedEmail,
-            expires: {
-              gt: new Date(Date.now() - 60 * 1000), // 1分钟内
-            },
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         });
 
-        if (recentToken) {
-          // 计算剩余冷却时间（从最近token创建时间算起，60秒冷却）
-          const tokenCreatedAt = new Date(recentToken.expires.getTime() - 10 * 60 * 1000); // token创建时间
-          const elapsedSeconds = Math.floor((Date.now() - tokenCreatedAt.getTime()) / 1000);
-          const remainingSeconds = Math.max(1, 60 - elapsedSeconds);
-          
-          logger.debug('OTP rate limited for email:', normalizedEmail);
-          throw new Error(`RATE_LIMITED:${remainingSeconds}`); // 传递剩余时间
+        // 使用核心逻辑函数进行统一判断
+        const timeStatus = checkVerificationTokenStatus(recentToken, serverNow);
+        
+        if (!timeStatus.canSend) {
+          logger.debug('OTP rate limited for email:', normalizedEmail, {
+            remainingSeconds: timeStatus.remainingSeconds,
+          });
+          throw new Error(`RATE_LIMITED:${timeStatus.remainingSeconds}`);
         }
 
         // 限制每个邮箱最多3个未过期的验证码
