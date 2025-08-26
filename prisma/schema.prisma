@@ -37,7 +37,6 @@ model Bounties {
   totalPaymentsMade    Int?               @default(0)
   totalWinnersSelected Int?               @default(0)
   isWinnersAnnounced   Boolean            @default(false)
-  isLockedPayment      Boolean            @default(false)
   templateId           String?
   region               String             @default("GLOBAL")
   pocSocials           String?
@@ -52,16 +51,17 @@ model Bounties {
   compensationType     CompensationType   @default(fixed)
   maxRewardAsk         Int?
   minRewardAsk         Int?
-  template             BountiesTemplates? @relation(fields: [templateId], references: [id])
-  sponsor              Sponsors           @relation(fields: [sponsorId], references: [id])
-  poc                  User               @relation("poc", fields: [pocId], references: [id])
   language             String?
   shouldSendEmail      Boolean            @default(true)
   isFndnPaying         Boolean            @default(false)
+  winnersAnnouncedAt   DateTime?
+  isLockedPayment      Boolean            @default(false)
+  template             BountiesTemplates? @relation(fields: [templateId], references: [id])
+  sponsor              Sponsors           @relation(fields: [sponsorId], references: [id])
+  poc                  User               @relation("poc", fields: [pocId], references: [id])
   Submission           Submission[]
   SubscribeBounty      SubscribeBounty[]
   Hackathon            Hackathon?         @relation(fields: [hackathonId], references: [id])
-  winnersAnnouncedAt   DateTime?
   Scouts               Scouts[]
   Comments             Comment[]
 
@@ -74,7 +74,7 @@ model Bounties {
   @@index([deadline, updatedAt])
   @@index([isWinnersAnnounced])
   @@index([title])
-  @@index([deadline(sort: Asc)], map: "Bounties_deadline_asc_idx")
+  @@index([deadline], map: "Bounties_deadline_asc_idx")
   @@index([deadline(sort: Desc)], map: "Bounties_deadline_desc_idx")
   @@index([winnersAnnouncedAt(sort: Desc)])
   @@index([isFeatured(sort: Desc)])
@@ -178,17 +178,17 @@ model Grants {
   skills                 Json?
   logo                   String?
   region                 Regions            @default(GLOBAL)
-  sponsor                Sponsors           @relation(fields: [sponsorId], references: [id])
-  poc                    User               @relation(fields: [pocId], references: [id])
   questions              Json?
   pocSocials             String?
   status                 GrantStatus        @default(OPEN)
-  GrantApplication       GrantApplication[]
   airtableId             String?
   avgResponseTime        String?            @default("24h")
   isNative               Boolean            @default(false)
   isPrivate              Boolean            @default(false)
   references             Json?
+  sponsor                Sponsors           @relation(fields: [sponsorId], references: [id])
+  poc                    User               @relation(fields: [pocId], references: [id])
+  GrantApplication       GrantApplication[]
 
   @@index([id, slug])
   @@index([pocId])
@@ -212,8 +212,6 @@ model GrantApplication {
   answers             Json?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
-  user                User                   @relation(fields: [userId], references: [id])
-  grant               Grants                 @relation(fields: [grantId], references: [id])
   label               SubmissionLabels       @default(Unreviewed)
   ask                 Float                  @default(0)
   approvedAmount      Float                  @default(0)
@@ -225,6 +223,8 @@ model GrantApplication {
   totalTranches       Int                    @default(0)
   like                Json?
   likeCount           Int                    @default(0)
+  user                User                   @relation(fields: [userId], references: [id])
+  grant               Grants                 @relation(fields: [grantId], references: [id])
   Comments            Comment[]
 
   @@index([userId])
@@ -254,10 +254,10 @@ model Submission {
   ask                Int?
   label              SubmissionLabels @default(Unreviewed)
   rewardInUSD        Float            @default(0)
-  listing            Bounties         @relation(fields: [listingId], references: [id])
-  user               User             @relation(fields: [userId], references: [id])
   ogImage            String?          @db.Text
   notes              String?          @db.VarChar(500)
+  listing            Bounties         @relation(fields: [listingId], references: [id])
+  user               User             @relation(fields: [userId], references: [id])
   Comments           Comment[]
 
   @@index([id, listingId])
@@ -277,8 +277,6 @@ model Sponsors {
   url          String?
   industry     String
   twitter      String?
-  telegram     String?
-  wechat       String?
   bio          String?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -288,6 +286,8 @@ model Sponsors {
   isVerified   Boolean             @default(false)
   isCaution    Boolean             @default(false)
   st           Boolean             @default(false)
+  telegram     String?
+  wechat       String?
   Hackathon    Hackathon?
   UserSponsors UserSponsors[]
   Bounties     Bounties[]
@@ -349,7 +349,6 @@ model User {
   linkedin           String?              @db.Text
   website            String?              @db.Text
   telegram           String?              @db.Text
-  wechat             String?              @db.Text
   community          String?              @db.Text
   experience         String?
   superteamLevel     String?
@@ -368,6 +367,8 @@ model User {
   stRecommended      Boolean              @default(false)
   acceptedTOS        Boolean              @default(false)
   stLead             String?
+  isBlocked          Boolean              @default(false)
+  wechat             String?              @db.Text
   currentSponsor     Sponsors?            @relation(fields: [currentSponsorId], references: [id])
   UserSponsors       UserSponsors[]
   poc                Bounties[]           @relation("poc")
@@ -386,7 +387,6 @@ model User {
   Scouts             Scouts[]
   GrantApplication   GrantApplication[]
   SubscribeHackathon SubscribeHackathon[]
-  isBlocked          Boolean              @default(false)
 
   @@index([email, publicKey, username])
   @@index([currentSponsorId])
@@ -437,8 +437,8 @@ model PoW {
   updatedAt   DateTime  @updatedAt
   like        Json?
   likeCount   Int       @default(0)
-  user        User      @relation(fields: [userId], references: [id])
   ogImage     String?   @db.Text
+  user        User      @relation(fields: [userId], references: [id])
   Comments    Comment[]
 
   @@index([userId])
@@ -651,12 +651,6 @@ enum CommentType {
   SUBMISSION
   DEADLINE_EXTENSION
   WINNER_ANNOUNCEMENT
-}
-
-enum JobType {
-  parttime
-  fulltime
-  internship
 }
 
 enum Regions {

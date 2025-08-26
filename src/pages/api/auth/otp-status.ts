@@ -4,6 +4,7 @@ import { prisma } from '@/prisma';
 
 // 验证码时间配置常量 - 与nextauth.ts保持一致
 const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
+const TOKEN_EXPIRE_MS = 10 * 60 * 1000;   // 10分钟有效期
 const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {

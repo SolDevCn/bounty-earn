@@ -70,3 +70,15 @@ local
 **/public/fallback-*.js
 # Sentry Config File
 .env.sentry-build-plugin
+
+# 本地开发和测试脚本 - 仅用于本地开发，不推送到主分支
+scripts/add-createdAt-simple.js
+scripts/add-createdAt-field.js
+scripts/check-db-schema.js
+scripts/check-db-status.js
+scripts/auth-tools-compatible.js
+scripts/auth-tools-sql.js
+scripts/detailed-function-compare.js
+scripts/verify-logic-consistency.js
+scripts/verify-10min-expiry.js
+scripts/.gitignore-suggestions

@@ -1,8 +1,6 @@
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import NextAuth, { type NextAuthOptions } from 'next-auth';
-import type { Adapter } from 'next-auth/adapters';
-import EmailProvider from 'next-auth/providers/email';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import EmailProvider from 'next-auth/providers/email';
 
 import {
   kashEmail,
@@ -14,9 +12,9 @@ import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 
 // 验证码时间配置常量
-const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
-const TOKEN_EXPIRE_MS = 10 * 60 * 1000;   // 10分钟有效期
-const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
+const RATE_LIMIT_MS = 60 * 1000; // 60秒发送限制
+const TOKEN_EXPIRE_MS = 10 * 60 * 1000; // 10分钟有效期
+const RESEND_TOLERANCE_MS = 30 * 1000; // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {
   canSend: boolean;
@@ -25,10 +23,10 @@ interface TimeStatus {
   remainingSeconds?: number;
 }
 
-// 核心时间判断函数 - 验证严格0容差，重发宽松容差
+// 核心时间判断函数 - 与nextauth.ts完全一致（验证严格0容差，重发宽松容差）
 function checkVerificationTokenStatus(
   token: { createdAt: Date; expires: Date } | null,
-  serverNow: number
+  serverNow: number,
 ): TimeStatus {
   // 情况1: 没有token，可以发送
   if (!token) {
@@ -38,11 +36,11 @@ function checkVerificationTokenStatus(
       message: '可以发送验证码',
     };
   }
-  
+
   const rateLimitEndTime = token.createdAt.getTime() + RATE_LIMIT_MS;
-  const strictExpireTime = token.expires.getTime();                    // 🔑 验证严格0容差
+  const strictExpireTime = token.expires.getTime(); // 🔑 验证严格0容差
   const resendAllowTime = token.expires.getTime() + RESEND_TOLERANCE_MS; // 🔑 重发宽松30s容差
-  
+
   // 优先级1: 发送频率限制（最高优先级）
   if (serverNow < rateLimitEndTime) {
     const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
@@ -53,27 +51,31 @@ function checkVerificationTokenStatus(
       remainingSeconds,
     };
   }
-  
+
   // 优先级2: 验证码过期（验证严格0容差，重发宽松容差）
-  if (serverNow >= strictExpireTime) {  // 🔑 使用 >= 确保恰好过期时也不可验证
-    const canResend = serverNow >= resendAllowTime;  // 🔑 使用 >= 确保恰好30秒时可重发
+  if (serverNow >= strictExpireTime) {
+    // 🔑 使用 >= 确保恰好过期时也不可验证
+    const canResend = serverNow >= resendAllowTime; // 🔑 使用 >= 确保恰好30秒时可重发
     return {
       canSend: canResend,
       canVerify: false, // 🔑 过期立即不可验证
-      message: canResend ? '验证码已过期，可重新获取' : '验证码已过期，请稍等再重新获取',
+      message: canResend
+        ? '验证码已过期，可重新获取'
+        : '验证码已过期，请稍等再重新获取',
     };
   }
-  
+
   // 优先级3: 正常有效状态
   return {
-    canSend: true,  // 有效期内也允许重发（用户体验考虑）
+    canSend: true, // 有效期内也允许重发（用户体验考虑）
     canVerify: true,
     message: '验证码有效',
   };
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
+  // 🔧 修复：移除PrismaAdapter以避免与JWT策略冲突
+  // adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
     // OTP验证provider - 用于验证6位数字验证码
     CredentialsProvider({
@@ -89,49 +91,85 @@ export const authOptions: NextAuthOptions = {
         }
 
         const { email, code } = credentials;
-        
+
         // 邮箱统一小写处理
         const normalizedEmail = email.toLowerCase().trim();
 
+        // 🔍 添加调试日志
+        console.log('🔍 [DEBUG] authorize() started', {
+          email: normalizedEmail,
+          codeLength: code.length,
+        });
+
         // 基本输入验证
         if (!/^\d{6}$/.test(code)) {
+          console.log('🔍 [DEBUG] invalid code format', { code });
           throw new Error('invalid_code');
         }
 
         try {
           // 统一时间基准 - 同一流程内使用同一个serverNow
           const serverNow = Date.now();
-          
+
           // 使用事务确保验证码一次性消费的原子性
           return await prisma.$transaction(async (tx) => {
             // 🔧 查找匹配的验证码（不预过滤时间，由checkVerificationTokenStatus统一判断）
+            // 🔑 添加排序确保获取最新的验证码
             const verificationRecord = await tx.verificationToken.findFirst({
               where: {
                 identifier: normalizedEmail,
                 token: code,
               },
+              orderBy: {
+                expires: 'desc', // 按过期时间降序排列，确保获取最新的验证码
+              },
             });
 
             if (!verificationRecord) {
+              console.log('🔍 [DEBUG] verificationRecord not found', {
+                email: normalizedEmail,
+                code,
+                serverNow,
+              });
               logger.debug('Verification failed: no matching token found', {
                 email: normalizedEmail,
                 codeLength: code.length,
-                serverNow
+                serverNow,
               });
               throw new Error('invalid_code');
             }
-            
+
+            // 🔍 添加调试日志
+            console.log('🔍 [DEBUG] verificationRecord found', {
+              found: !!verificationRecord,
+              tokenExpires: verificationRecord?.expires,
+              tokenCreated: verificationRecord?.createdAt,
+              serverNow: new Date(serverNow),
+            });
+
             // 🔑 验证使用严格0容差 - 绝对安全
-            const timeStatus = checkVerificationTokenStatus(verificationRecord, serverNow);
-            
+            const timeStatus = checkVerificationTokenStatus(
+              verificationRecord,
+              serverNow,
+            );
+
+            // 🔍 添加调试日志
+            console.log('🔍 [DEBUG] timeStatus check', timeStatus);
+
             if (!timeStatus.canVerify) {
+              console.log('🔍 [DEBUG] time validation failed', {
+                timeStatus,
+                tokenCreatedAt: verificationRecord.createdAt,
+                tokenExpires: verificationRecord.expires,
+                serverNow: new Date(serverNow),
+              });
               logger.debug('Verification failed: time validation failed', {
                 email: normalizedEmail,
                 code,
                 timeStatus,
                 tokenCreatedAt: verificationRecord.createdAt,
                 tokenExpires: verificationRecord.expires,
-                serverNow
+                serverNow,
               });
               throw new Error('invalid_or_expired_code');
             }
@@ -153,31 +191,52 @@ export const authOptions: NextAuthOptions = {
               });
             }
 
+            // 🔍 添加调试日志
+            console.log('🔍 [DEBUG] user check', {
+              found: !!user,
+              userId: user?.id,
+              isBlocked: user?.isBlocked,
+            });
+
             // 检查用户是否被屏蔽
             if (user.isBlocked) {
+              console.log('🔍 [DEBUG] user is blocked', { userId: user.id });
               throw new Error('user_blocked');
             }
 
             logger.debug('Verification successful', {
               email: normalizedEmail,
               userId: user.id,
-              serverNow
+              serverNow,
             });
 
-            return {
+            const returnUser = {
               id: user.id,
               email: user.email,
-              name: user.username || user.firstName || normalizedEmail.split('@')[0],
+              name:
+                user.username ||
+                user.firstName ||
+                normalizedEmail.split('@')[0],
               image: user.photo,
             };
+
+            // 🔍 添加调试日志
+            console.log('🔍 [DEBUG] authorize() returning user', {
+              userId: returnUser.id,
+              email: returnUser.email,
+              name: returnUser.name,
+            });
+
+            return returnUser;
           });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           logger.error('OTP verification failed:', {
             email: normalizedEmail,
             error: errorMessage,
           });
-          
+
           // 重新抛出已知错误
           if (
             errorMessage.includes('invalid_') ||
@@ -186,7 +245,7 @@ export const authOptions: NextAuthOptions = {
           ) {
             throw error;
           }
-          
+
           // 未知错误
           throw new Error('verification_failed');
         }
@@ -227,7 +286,7 @@ export const authOptions: NextAuthOptions = {
 
         // 统一时间基准 - 同一流程内使用同一个serverNow
         const serverNow = Date.now();
-        
+
         // 🔧 使用事务确保发送验证码的原子性，防止并发竞态条件
         await prisma.$transaction(async (tx) => {
           // 检查发送频率 - 基于createdAt字段进行严格判断（0容差）
@@ -241,8 +300,11 @@ export const authOptions: NextAuthOptions = {
           });
 
           // 使用核心逻辑函数进行统一判断
-          const timeStatus = checkVerificationTokenStatus(recentToken, serverNow);
-          
+          const timeStatus = checkVerificationTokenStatus(
+            recentToken,
+            serverNow,
+          );
+
           if (!timeStatus.canSend) {
             logger.debug('OTP rate limited for email:', normalizedEmail, {
               remainingSeconds: timeStatus.remainingSeconds,
@@ -295,7 +357,7 @@ export const authOptions: NextAuthOptions = {
           replyTo: replyToEmail,
         });
       },
-      maxAge: 10 * 60,
+      maxAge: TOKEN_EXPIRE_MS / 1000, // 使用统一的10分钟有效期常量
     }),
   ],
   session: {
@@ -337,19 +399,20 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.image = user.image;
-        // 如果user对象有其他必要字段，也可以添加
-        if (user.firstName) token.firstName = user.firstName;
-        if (user.lastName) token.lastName = user.lastName;
-        if (user.photo) token.photo = user.photo;
-        if (user.role) token.role = user.role;
-        if (user.location) token.location = user.location;
+        // 🔧 修复：使用类型安全的方式访问用户属性
+        const userAny = user as any;
+        if (userAny.firstName) token.firstName = userAny.firstName;
+        if (userAny.lastName) token.lastName = userAny.lastName;
+        if (userAny.photo) token.photo = userAny.photo;
+        if (userAny.role) token.role = userAny.role;
+        if (userAny.location) token.location = userAny.location;
       }
-      
+
       // 保留account信息（如果需要）
       if (account) {
         token.access_token = account.access_token;
       }
-      
+
       return token;
     },
     async session({ session, token }) {
@@ -371,18 +434,21 @@ export const authOptions: NextAuthOptions = {
           await prisma.verificationToken.deleteMany({
             where: {
               identifier: user.email as string,
-              expires: { gt: new Date() }
-            }
+              expires: { gt: new Date() },
+            },
           });
-          logger.debug('Cleared all verification tokens after successful login', {
-            email: user.email
-          });
+          logger.debug(
+            'Cleared all verification tokens after successful login',
+            {
+              email: user.email,
+            },
+          );
         } catch (error) {
           logger.error('Failed to clear verification tokens:', error);
           // 不阻断登录流程，继续进行
         }
       }
-    }
+    },
   },
   pages: {
     verifyRequest: '/verify-request',

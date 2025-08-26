@@ -1,0 +1,21 @@
+# 本地开发和测试脚本 - 不推送到主分支
+
+# 数据库相关的临时脚本
+add-createdAt-simple.js
+add-createdAt-field.js
+check-db-schema.js
+check-db-status.js
+
+# 兼容性和调试脚本
+auth-tools-compatible.js
+auth-tools-sql.js
+detailed-function-compare.js
+
+# 临时验证脚本
+verify-logic-consistency.js
+verify-10min-expiry.js
+
+# 其他临时文件
+*.tmp
+*.temp
+*-backup.js

@@ -189,23 +189,37 @@ export default function VerifyRequest() {
         redirect: false,
       });
 
+      // 🔍 添加详细的调试日志
+      console.log('🔍 [DEBUG] signIn result', {
+        ok: result?.ok,
+        error: result?.error,
+        status: result?.status,
+        url: result?.url
+      });
+
       if (result?.error) {
         // 处理验证错误
+        console.log('🔍 [DEBUG] signIn error detected', result.error);
         handleVerificationError(result.error);
         return;
       }
 
       if (result?.ok) {
         // 验证成功，显示成功消息并平滑跳转
+        console.log('🔍 [DEBUG] signIn successful');
         setVerificationError('验证成功，正在跳转...');
-        
+
         // 清除存储的邮箱信息
         localStorage.removeItem('emailForSignIn');
-        
+
         // 使用Next.js路由进行SPA跳转，保持应用状态
         setTimeout(() => {
           router.push('/');
         }, 1500); // 给用户1.5秒看到成功消息
+      } else {
+        // 🔍 处理既没有error也没有ok的情况
+        console.log('🔍 [DEBUG] signIn result unclear', result);
+        handleVerificationError('unknown_error');
       }
     } catch (error) {
       // 🔧 增强网络错误处理
