@@ -4,12 +4,10 @@ import { prisma } from '@/prisma';
 
 // 验证码时间配置常量 - 与nextauth.ts保持一致
 const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
-const TOKEN_EXPIRE_MS = 10 * 60 * 1000;   // 10分钟有效期
 const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {
   canSend: boolean;
-  canVerify: boolean;
   message: string;
   remainingSeconds?: number;
 }
@@ -18,7 +16,6 @@ interface OtpStatusResponse {
   success: boolean;
   data?: {
     canSend: boolean;
-    canVerify: boolean;
     resendCooldownSeconds: number;
     tokenExpireSeconds: number;
     serverTimestamp: number;
@@ -27,7 +24,7 @@ interface OtpStatusResponse {
   error?: string;
 }
 
-// 核心时间判断函数 - 与nextauth.ts完全一致（验证严格0容差，重发宽松容差）
+// 核心时间判断函数 - 专注于发送控制和UI提示
 function checkVerificationTokenStatus(
   token: { createdAt: Date; expires: Date } | null,
   serverNow: number
@@ -36,13 +33,11 @@ function checkVerificationTokenStatus(
   if (!token) {
     return {
       canSend: true,
-      canVerify: false,
       message: '可以发送验证码',
     };
   }
   
   const rateLimitEndTime = token.createdAt.getTime() + RATE_LIMIT_MS;
-  const strictExpireTime = token.expires.getTime();                        // 🔑 验证严格0容差
   const resendAllowTime = token.expires.getTime() + RESEND_TOLERANCE_MS;    // 🔑 重发宽松30s容差
   
   // 优先级1: 发送频率限制（最高优先级）
@@ -50,27 +45,24 @@ function checkVerificationTokenStatus(
     const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
     return {
       canSend: false,
-      canVerify: serverNow < strictExpireTime, // 🔑 修复：统一使用 < 确保与过期判断一致
       message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
       remainingSeconds,
     };
   }
   
-  // 优先级2: 验证码过期（验证严格0容差，重发宽松容差）
-  if (serverNow >= strictExpireTime) {  // 🔑 使用 >= 确保恰好过期时也不可验证
+  // 优先级2: 重发容差期判断
+  if (serverNow >= token.expires.getTime()) {
     const canResend = serverNow >= resendAllowTime;  // 🔑 使用 >= 确保恰好30秒时可重发
     return {
       canSend: canResend,
-      canVerify: false, // 🔑 过期立即不可验证
-      message: canResend ? '验证码已过期，可重新获取' : '验证码已过期，请稍等再重新获取',
+      message: canResend ? '可重新获取验证码' : '请稍等再重新获取',
     };
   }
   
-  // 优先级3: 正常有效状态
+  // 优先级3: 正常状态
   return {
     canSend: true,  // 有效期内也允许重发（用户体验考虑）
-    canVerify: true,
-    message: '验证码有效',
+    message: '可以发送验证码',
   };
 }
 
@@ -133,7 +125,6 @@ export default async function handler(
       success: true,
       data: {
         canSend: timeStatus.canSend,
-        canVerify: timeStatus.canVerify,
         resendCooldownSeconds,
         tokenExpireSeconds,
         serverTimestamp: serverNow,

@@ -37,7 +37,6 @@ export default function VerifyRequest() {
   // 状态查询相关接口
   interface OtpStatusData {
     canSend: boolean;
-    canVerify: boolean;
     resendCooldownSeconds: number;
     tokenExpireSeconds: number;
     serverTimestamp: number;
@@ -74,10 +73,7 @@ export default function VerifyRequest() {
       setResendCooldown(status.resendCooldownSeconds);
       setCanResend(status.canSend);
 
-      // 如果验证码已过期，显示提示
-      if (!status.canVerify && status.tokenExpireSeconds === 0) {
-        setVerificationError('验证码已过期，请重新获取');
-      }
+      // 移除基于canVerify的过期判断，让signIn('otp')完全控制验证流程
     }
   };
 
@@ -182,31 +178,20 @@ export default function VerifyRequest() {
     setVerificationError('');
 
     try {
-      // 使用CredentialsProvider验证OTP
+      // 直接验证，不做任何前置状态检查
       const result = await signIn('otp', {
         email,
         code: token,
         redirect: false,
       });
 
-      // 🔍 添加详细的调试日志
-      console.log('🔍 [DEBUG] signIn result', {
-        ok: result?.ok,
-        error: result?.error,
-        status: result?.status,
-        url: result?.url
-      });
-
       if (result?.error) {
         // 处理验证错误
-        console.log('🔍 [DEBUG] signIn error detected', result.error);
         handleVerificationError(result.error);
-        return;
-      }
-
-      if (result?.ok) {
+        // 验证失败后，异步刷新状态用于UI优化
+        setTimeout(() => refreshStatus(), 500);
+      } else if (result?.ok) {
         // 验证成功，显示成功消息并平滑跳转
-        console.log('🔍 [DEBUG] signIn successful');
         setVerificationError('验证成功，正在跳转...');
 
         // 清除存储的邮箱信息
@@ -217,14 +202,12 @@ export default function VerifyRequest() {
           router.push('/');
         }, 1500); // 给用户1.5秒看到成功消息
       } else {
-        // 🔍 处理既没有error也没有ok的情况
-        console.log('🔍 [DEBUG] signIn result unclear', result);
+        // 处理未知状态
         handleVerificationError('unknown_error');
       }
     } catch (error) {
-      // 🔧 增强网络错误处理
+      // 网络错误处理
       console.error('Network error during verification:', error);
-      setIsVerifying(false);
       
       // 根据错误类型提供具体的用户提示
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -236,6 +219,8 @@ export default function VerifyRequest() {
       } else {
         setVerificationError('验证过程出现异常，请重试或刷新页面');
       }
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -354,6 +339,8 @@ export default function VerifyRequest() {
       // 10秒后清除错误提示（但保留错误计数）
       setTimeout(() => {
         setVerificationError('');
+        // 异步刷新状态，用于重发按钮控制
+        refreshStatus();
       }, 10000);
     }
   };

@@ -23,7 +23,7 @@ interface TimeStatus {
   remainingSeconds?: number;
 }
 
-// 核心时间判断函数 - 与nextauth.ts完全一致（验证严格0容差，重发宽松容差）
+// 验证时的时间判断函数 - 严格验证，确保安全性
 function checkVerificationTokenStatus(
   token: { createdAt: Date; expires: Date } | null,
   serverNow: number,
@@ -95,15 +95,9 @@ export const authOptions: NextAuthOptions = {
         // 邮箱统一小写处理
         const normalizedEmail = email.toLowerCase().trim();
 
-        // 🔍 添加调试日志
-        console.log('🔍 [DEBUG] authorize() started', {
-          email: normalizedEmail,
-          codeLength: code.length,
-        });
 
         // 基本输入验证
         if (!/^\d{6}$/.test(code)) {
-          console.log('🔍 [DEBUG] invalid code format', { code });
           throw new Error('invalid_code');
         }
 
@@ -126,11 +120,6 @@ export const authOptions: NextAuthOptions = {
             });
 
             if (!verificationRecord) {
-              console.log('🔍 [DEBUG] verificationRecord not found', {
-                email: normalizedEmail,
-                code,
-                serverNow,
-              });
               logger.debug('Verification failed: no matching token found', {
                 email: normalizedEmail,
                 codeLength: code.length,
@@ -139,13 +128,6 @@ export const authOptions: NextAuthOptions = {
               throw new Error('invalid_code');
             }
 
-            // 🔍 添加调试日志
-            console.log('🔍 [DEBUG] verificationRecord found', {
-              found: !!verificationRecord,
-              tokenExpires: verificationRecord?.expires,
-              tokenCreated: verificationRecord?.createdAt,
-              serverNow: new Date(serverNow),
-            });
 
             // 🔑 验证使用严格0容差 - 绝对安全
             const timeStatus = checkVerificationTokenStatus(
@@ -153,16 +135,7 @@ export const authOptions: NextAuthOptions = {
               serverNow,
             );
 
-            // 🔍 添加调试日志
-            console.log('🔍 [DEBUG] timeStatus check', timeStatus);
-
             if (!timeStatus.canVerify) {
-              console.log('🔍 [DEBUG] time validation failed', {
-                timeStatus,
-                tokenCreatedAt: verificationRecord.createdAt,
-                tokenExpires: verificationRecord.expires,
-                serverNow: new Date(serverNow),
-              });
               logger.debug('Verification failed: time validation failed', {
                 email: normalizedEmail,
                 code,
@@ -191,16 +164,8 @@ export const authOptions: NextAuthOptions = {
               });
             }
 
-            // 🔍 添加调试日志
-            console.log('🔍 [DEBUG] user check', {
-              found: !!user,
-              userId: user?.id,
-              isBlocked: user?.isBlocked,
-            });
-
             // 检查用户是否被屏蔽
             if (user.isBlocked) {
-              console.log('🔍 [DEBUG] user is blocked', { userId: user.id });
               throw new Error('user_blocked');
             }
 
@@ -219,13 +184,6 @@ export const authOptions: NextAuthOptions = {
                 normalizedEmail.split('@')[0],
               image: user.photo,
             };
-
-            // 🔍 添加调试日志
-            console.log('🔍 [DEBUG] authorize() returning user', {
-              userId: returnUser.id,
-              email: returnUser.email,
-              name: returnUser.name,
-            });
 
             return returnUser;
           });
