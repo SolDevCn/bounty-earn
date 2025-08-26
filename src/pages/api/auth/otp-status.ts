@@ -3,81 +3,77 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/prisma';
 
 // 验证码时间配置常量 - 与nextauth.ts保持一致
-const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
-const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
+const RATE_LIMIT_MS = 60 * 1000; // 60秒发送限制
+const RESEND_TOLERANCE_MS = 30 * 1000; // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {
-  canSend: boolean;
-  message: string;
-  remainingSeconds?: number;
+  retryCooldownSeconds: number;
 }
 
 interface OtpStatusResponse {
   success: boolean;
   data?: {
-    canSend: boolean;
-    resendCooldownSeconds: number;
-    tokenExpireSeconds: number;
-    serverTimestamp: number;
-    message: string;
+    sn: number; // server now ms
+    retry: number; // retry cooldown seconds
+    exp: number | null; // latest token expiration ms, null if no token
   };
   error?: string;
 }
 
-// 核心时间判断函数 - 专注于发送控制和UI提示
+// 核心时间判断函数 - 计算重发冷却时间
 function checkVerificationTokenStatus(
-  token: { createdAt: Date; expires: Date } | null,
+  latestToken: { createdAt: Date } | null,
+  activeToken: { expires: Date } | null,
   serverNow: number
 ): TimeStatus {
-  // 情况1: 没有token，可以发送
-  if (!token) {
+  // 优先级1: 发送频率限制（最高优先级）- 基于最近创建时间
+  if (latestToken) {
+    const rateLimitEndTime = latestToken.createdAt.getTime() + RATE_LIMIT_MS;
+    if (serverNow < rateLimitEndTime) {
+      const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
+      return {
+        retryCooldownSeconds: remainingSeconds,
+      };
+    }
+  }
+  
+  // 优先级2: 重发容差期判断 - 基于活跃token的过期时间
+  if (activeToken) {
+    // 有活跃token，可以重发
     return {
-      canSend: true,
-      message: '可以发送验证码',
+      retryCooldownSeconds: 0,
     };
   }
   
-  const rateLimitEndTime = token.createdAt.getTime() + RATE_LIMIT_MS;
-  const resendAllowTime = token.expires.getTime() + RESEND_TOLERANCE_MS;    // 🔑 重发宽松30s容差
-  
-  // 优先级1: 发送频率限制（最高优先级）
-  if (serverNow < rateLimitEndTime) {
-    const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
-    return {
-      canSend: false,
-      message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
-      remainingSeconds,
-    };
+  // 优先级3: 容差期判断（如果有最近token但已过期）
+  if (latestToken) {
+    // 需要计算最近token的过期时间（假设10分钟有效期）
+    const TOKEN_EXPIRE_MS = 10 * 60 * 1000;
+    const estimatedExpireTime = latestToken.createdAt.getTime() + TOKEN_EXPIRE_MS;
+    const resendAllowTime = estimatedExpireTime + RESEND_TOLERANCE_MS;
+    
+    if (serverNow >= estimatedExpireTime) {
+      const cooldownRemaining = Math.max(0, resendAllowTime - serverNow);
+      return {
+        retryCooldownSeconds: Math.ceil(cooldownRemaining / 1000),
+      };
+    }
   }
   
-  // 优先级2: 重发容差期判断
-  if (serverNow >= token.expires.getTime()) {
-    const canResend = serverNow >= resendAllowTime;  // 🔑 使用 >= 确保恰好30秒时可重发
-    return {
-      canSend: canResend,
-      message: canResend ? '可重新获取验证码' : '请稍等再重新获取',
-    };
-  }
-  
-  // 优先级3: 正常状态
+  // 情况4: 没有任何token，可以发送
   return {
-    canSend: true,  // 有效期内也允许重发（用户体验考虑）
-    message: '可以发送验证码',
+    retryCooldownSeconds: 0,
   };
 }
 
-// 计算验证码过期剩余时间（严格边界，用于用户展示）
-function calculateTokenExpireSeconds(
+// 计算验证码过期时间戳（严格边界）
+function calculateTokenExpireTimestamp(
   token: { expires: Date } | null,
-  serverNow: number
-): number {
-  if (!token) return 0;
-  
-  // 🔑 使用严格时间（0容差）计算剩余时间 - 与验证逻辑一致
-  const strictExpireTime = token.expires.getTime();
-  const remaining = strictExpireTime - serverNow;
-  
-  return Math.max(0, Math.ceil(remaining / 1000));
+): number | null {
+  if (!token) return null;
+
+  // 返回过期时间戳（毫秒）
+  return token.expires.getTime();
 }
 
 export default async function handler(
@@ -102,40 +98,72 @@ export default async function handler(
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    const serverNow = Date.now(); // 统一时间基准
+    // 统一时间基准 - 全链路复用
+    const serverNow = Date.now();
+    const nowDt = new Date(serverNow);
 
-    // 🔧 查找最晚过期的验证码（不预过滤时间，由checkVerificationTokenStatus统一判断）
-    const latestToken = await prisma.verificationToken.findFirst({
+    // 分离查询：冷却检查（不筛过期）+ 过期检查（只看未过期）
+    
+    // 1. 冷却检查 - 看最近一次创建时间（不筛过期）
+    const latestAnyToken = await prisma.verificationToken.findFirst({
       where: {
         identifier: normalizedEmail,
       },
+      select: {
+        createdAt: true,
+      },
       orderBy: {
-        expires: 'desc', // 按过期时间倒序，获取最晚过期的
+        createdAt: 'desc',
       },
     });
 
-    // 使用核心逻辑函数进行统一判断
-    const timeStatus = checkVerificationTokenStatus(latestToken, serverNow);
+    // 2. 过期检查 - 看所有未过期中最晚过期的
+    const activeToken = await prisma.verificationToken.findFirst({
+      where: {
+        identifier: normalizedEmail,
+        expires: {
+          gt: nowDt,
+        },
+      },
+      select: {
+        expires: true,
+      },
+      orderBy: {
+        expires: 'desc',
+      },
+    });
 
-    // 计算具体的剩余时间
-    const resendCooldownSeconds = timeStatus.remainingSeconds || 0;
-    const tokenExpireSeconds = calculateTokenExpireSeconds(latestToken, serverNow);
+    // 使用分离的数据进行统一判断
+    const timeStatus = checkVerificationTokenStatus(latestAnyToken, activeToken, serverNow);
+
+    // 计算验证码过期时间戳
+    const expireTimestamp = calculateTokenExpireTimestamp(activeToken);
+
+    // 设置缓存控制头
+    res.setHeader('Cache-Control', 'no-store');
 
     return res.status(200).json({
       success: true,
       data: {
-        canSend: timeStatus.canSend,
-        resendCooldownSeconds,
-        tokenExpireSeconds,
-        serverTimestamp: serverNow,
-        message: timeStatus.message,
+        sn: serverNow, // server now ms
+        retry: timeStatus.retryCooldownSeconds, // retry cooldown seconds
+        exp: expireTimestamp, // expiration timestamp ms
       },
     });
   } catch (error) {
     console.error('OTP status query error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
+    
+    // 保守兜底：返回安全的默认值，不阻塞前端操作
+    const fallbackNow = Date.now();
+    res.setHeader('Cache-Control', 'no-store');
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        sn: fallbackNow,
+        retry: 0, // 允许尝试发送
+        exp: null, // 无验证码状态
+      },
     });
   }
 }

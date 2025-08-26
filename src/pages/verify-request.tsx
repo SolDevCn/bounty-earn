@@ -36,11 +36,9 @@ export default function VerifyRequest() {
 
   // 状态查询相关接口
   interface OtpStatusData {
-    canSend: boolean;
-    resendCooldownSeconds: number;
-    tokenExpireSeconds: number;
-    serverTimestamp: number;
-    message: string;
+    sn: number; // server now ms
+    retry: number; // retry cooldown seconds
+    exp: number | null; // expiration timestamp ms, null if no token
   }
 
   // 查询验证码状态
@@ -70,10 +68,10 @@ export default function VerifyRequest() {
   const refreshStatus = async () => {
     const status = await fetchOtpStatus();
     if (status) {
-      setResendCooldown(status.resendCooldownSeconds);
-      setCanResend(status.canSend);
+      setResendCooldown(status.retry);
+      setCanResend(status.retry === 0);
 
-      // 移除基于canVerify的过期判断，让signIn('otp')完全控制验证流程
+      // UI基于retry字段判断：retry为0时可重发
     }
   };
 

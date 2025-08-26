@@ -30,21 +30,39 @@ export const EmailSignIn = () => {
 
     if (isEmailValid) {
       try {
-        // const isValidEmail = await checkEmailValidity(email);
-        const isValidEmail = true;
-        if (isValidEmail) {
-          posthog.capture('email OTP_auth');
-          localStorage.setItem('emailForSignIn', email);
-          signIn('email', {
-            email,
-            callbackUrl: `${router.asPath}?loginState=signedIn`,
-          });
-        } else {
+        // 🔧 优化：先检查是否可以发送验证码
+        const checkResponse = await fetch('/api/auth/request-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        if (!checkResponse.ok) {
+          const errorData = await checkResponse.json();
           setIsLoading(false);
-          setEmailError(
-            '该电子邮件地址似乎是无效的或需要白名单。请检查并重试。',
-          );
+          
+          if (errorData.error === 'BLOCKED_EMAIL') {
+            setEmailError('该邮箱地址已被屏蔽，无法发送验证码。');
+          } else if (errorData.error === 'RATE_LIMITED') {
+            const remaining = errorData.remainingSeconds || 60;
+            setEmailError(`发送过于频繁，请等待 ${remaining} 秒后重试。`);
+          } else if (errorData.error === 'TOO_MANY_TOKENS') {
+            setEmailError('该邮箱有过多未使用的验证码，请稍后再试。');
+          } else {
+            setEmailError('无法发送验证码，请稍后重试。');
+          }
+          return;
         }
+
+        // 检查通过，继续发送验证码
+        posthog.capture('email OTP_auth');
+        localStorage.setItem('emailForSignIn', email);
+        signIn('email', {
+          email,
+          callbackUrl: `${router.asPath}?loginState=signedIn`,
+        });
       } catch (error) {
         setIsLoading(false);
         console.error('Error during email validation:', error);
