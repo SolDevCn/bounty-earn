@@ -49,7 +49,7 @@ function checkVerificationTokenStatus(
     const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
     return {
       canSend: false,
-      canVerify: serverNow <= strictExpireTime, // 🔑 验证使用严格时间
+      canVerify: serverNow < strictExpireTime, // 🔑 修复：统一使用 < 确保与过期判断一致
       message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
       remainingSeconds,
     };
@@ -111,13 +111,13 @@ export default async function handler(
     const normalizedEmail = email.toLowerCase().trim();
     const serverNow = Date.now(); // 统一时间基准
 
-    // 查找最新的验证码
+    // 🔧 查找最晚过期的验证码（不预过滤时间，由checkVerificationTokenStatus统一判断）
     const latestToken = await prisma.verificationToken.findFirst({
       where: {
         identifier: normalizedEmail,
       },
       orderBy: {
-        createdAt: 'desc',
+        expires: 'desc', // 按过期时间倒序，获取最晚过期的
       },
     });
 

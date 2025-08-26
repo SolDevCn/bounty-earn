@@ -240,6 +240,10 @@ export default function VerifyRequest() {
         return '验证失败，请稍后重试';
       case 'invalid_credentials':
         return '请输入正确的邮箱和验证码';
+      case 'CredentialsSignin':
+        return '验证码不正确，请重新输入';
+      case 'Signin':
+        return '验证码验证失败，请重新输入';
       default:
         return '验证码不正确，请重新输入';
     }
@@ -439,7 +443,7 @@ export default function VerifyRequest() {
             <Alert
               borderRadius="md"
               status={
-                verificationError.includes('已发送') ? 'success' : 'error'
+                verificationError.includes('已发送') || verificationError.includes('验证成功') ? 'success' : 'error'
               }
             >
               <AlertIcon />
