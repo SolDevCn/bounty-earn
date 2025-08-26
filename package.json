@@ -13,12 +13,7 @@
     "prepare": "husky",
     "postinstall": "prisma generate",
     "knip": "knip",
-    "find-deadcode": "ts-prune",
-    "auth:diagnose": "node scripts/auth-tools.js diagnose",
-    "auth:test": "node scripts/auth-tools.js test",
-    "auth:verify": "node scripts/auth-tools.js verify",
-    "auth:check": "node scripts/auth-tools.js check",
-    "pre-deploy": "node scripts/pre-deploy-check.js"
+    "find-deadcode": "ts-prune"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
