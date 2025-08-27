@@ -31,6 +31,7 @@ export default function VerifyRequest() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
+  const [isInFlight, setIsInFlight] = useState(false); // 🔒 飞行锁：防止重复提交
   // 移除了serverTimeOffset，当前不需要客户端时间同步
   const router = useRouter();
 
@@ -169,7 +170,8 @@ export default function VerifyRequest() {
   }, [resendCooldown]);
 
   const verifyOTP = async (value: string) => {
-    if (isVerifying || !value) return;
+    // 🛡️ 飞行锁防重复提交
+    if (isVerifying || isInFlight || !value) return;
 
     // 🔧 宽松的输入验证 - 自动清理非数字字符
     const token = value.replace(/\D/g, ''); // 移除所有非数字字符
@@ -179,6 +181,8 @@ export default function VerifyRequest() {
       return;
     }
 
+    // 🔒 启用飞行锁
+    setIsInFlight(true);
     setIsVerifying(true);
     setVerificationError('');
 
@@ -207,6 +211,7 @@ export default function VerifyRequest() {
         setTimeout(() => {
           router.push('/');
         }, 1500); // 给用户1.5秒看到成功消息
+        return; // 🔒 成功时不释放飞行锁，防止重复操作
       }
     } catch (error) {
       // 🔧 增强网络错误处理
@@ -222,6 +227,13 @@ export default function VerifyRequest() {
         setVerificationError('请求被中断，请重试');
       } else {
         setVerificationError('验证过程出现异常，请重试或刷新页面');
+      }
+    } finally {
+      // 🔓 失败情况下，3秒后释放飞行锁
+      if (isInFlight) {
+        setTimeout(() => {
+          setIsInFlight(false);
+        }, 3000);
       }
     }
   };
@@ -274,6 +286,11 @@ export default function VerifyRequest() {
       return '发送中...';
     }
     
+    // 🎁 特殊提示：如果刚发生 verification_failed
+    if (verificationError.includes('验证异常') || verificationError.includes('免冷却')) {
+      return '🆘 立即重发验证码'; // 特殊标识
+    }
+    
     // 根据验证码状态提供智能提示
     if (!canResend) {
       return '验证码已过期，稍等可重发'; // 在30s容差期内的状态
@@ -306,6 +323,13 @@ export default function VerifyRequest() {
     setErrorCount(newErrorCount);
     setOtpValue(''); // 清空输入框
     setIsVerifying(false);
+    
+    // 🔓 释放飞行锁（3秒后）
+    if (isInFlight) {
+      setTimeout(() => {
+        setIsInFlight(false);
+      }, 3000);
+    }
 
     if (newErrorCount >= 5) {
       // 5次错误后提供明确的下一步指引
@@ -326,8 +350,13 @@ export default function VerifyRequest() {
       // 🔧 根据错误码显示精确的错误信息
       let errorMessage = errorCode ? getErrorMessage(errorCode) : '验证码输入有误，请重新检查';
 
-      // 为过期验证码提供额外的帮助信息
-      if (errorCode === 'expired_code') {
+      // 🩹 特殊处理 verification_failed
+      if (errorCode === 'verification_failed') {
+        errorMessage = 
+          '验证过程出现异常，这可能是网络问题导致的。\n\n' +
+          '💡 建议：点击"重新发送验证码"获取新的验证码后重试\n\n' +
+          '✨ 提示：由于验证异常，您可以立即重新发送验证码，无需等待冷却时间';
+      } else if (errorCode === 'expired_code') {
         errorMessage += '\n\n💡 提示：验证码从发送时开始计算10分钟有效期';
       } else if (errorCode === 'invalid_code') {
         errorMessage += '\n\n💡 提示：请确保输入的是最新收到的验证码';
@@ -464,7 +493,7 @@ export default function VerifyRequest() {
                 focusBorderColor={
                   verificationError ? 'red.500' : 'brand.purple'
                 }
-                isDisabled={isVerifying || errorCount >= 5}
+                isDisabled={isVerifying || isInFlight || errorCount >= 5}
                 onChange={(value) => {
                   // 🔧 实时清理输入 - 只保留数字
                   const cleaned = value.replace(/\D/g, '');

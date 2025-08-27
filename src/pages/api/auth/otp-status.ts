@@ -50,18 +50,18 @@ function checkVerificationTokenStatus(
     const remainingSeconds = Math.ceil((rateLimitEndTime - serverNow) / 1000);
     return {
       canSend: false,
-      canVerify: serverNow <= strictExpireTime, // 🔑 验证使用严格时间
+      canVerify: serverNow <= strictExpireTime + VERIFICATION_TOLERANCE_MS, // 🔑 验证使用容错时间，与实际验证逻辑一致
       message: `请求过于频繁，请 ${remainingSeconds} 秒后重试`,
       remainingSeconds,
     };
   }
   
-  // 优先级2: 验证码过期（验证严格0容差，重发宽松容差）
-  if (serverNow >= strictExpireTime) {  // 🔑 使用 >= 确保恰好过期时也不可验证
+  // 优先级2: 验证码过期（验证使用容错期，重发宽松容差）
+  if (serverNow > strictExpireTime + VERIFICATION_TOLERANCE_MS) {  // 🔑 使用容错期判断过期，与验证逻辑一致使用 >
     const canResend = serverNow >= resendAllowTime;  // 🔑 使用 >= 确保恰好30秒时可重发
     return {
       canSend: canResend,
-      canVerify: false, // 🔑 过期立即不可验证
+      canVerify: false, // 🔑 超出容错期后不可验证
       message: canResend ? '验证码已过期，可重新获取' : '验证码已过期，请稍等再重新获取',
     };
   }
@@ -74,17 +74,17 @@ function checkVerificationTokenStatus(
   };
 }
 
-// 计算验证码过期剩余时间（严格边界，用于用户展示）
+// 计算验证码过期剩余时间（包含容错期，用于用户展示）
 function calculateTokenExpireSeconds(
   token: { expires: Date } | null,
   serverNow: number
 ): number {
   if (!token) return 0;
-  
-  // 🔑 使用严格时间（0容差）计算剩余时间 - 与验证逻辑一致
-  const strictExpireTime = token.expires.getTime();
-  const remaining = strictExpireTime - serverNow;
-  
+
+  // 🔑 使用容错时间计算剩余时间 - 与实际验证逻辑一致
+  const tolerantExpireTime = token.expires.getTime() + VERIFICATION_TOLERANCE_MS;
+  const remaining = tolerantExpireTime - serverNow;
+
   return Math.max(0, Math.ceil(remaining / 1000));
 }
 
