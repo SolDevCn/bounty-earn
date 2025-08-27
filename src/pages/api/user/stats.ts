@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getToken } from 'next-auth/jwt';
 
-import logger from '@/lib/logger';
+import logger, { maskSensitiveData } from '@/lib/logger';
 import { prisma } from '@/prisma';
 import { safeStringify } from '@/utils/safeStringify';
 
@@ -11,7 +11,7 @@ export default async function handler(
 ) {
   try {
     const token = await getToken({ req });
-    logger.debug(`Token retrieved: ${safeStringify(token)}`);
+    logger.debug(`Token retrieved: ${token ? 'present' : 'null'}`);
 
     if (!token) {
       logger.warn('Unauthorized request - No token provided');
