@@ -17,33 +17,37 @@ import {
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { signIn } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  getNetworkErrorMessage,
+  getOtpErrorMessage,
+  getSendErrorMessage,
+} from '@/lib/auth/errorHandling';
 import { EmailIcon } from '@/svg/email';
 
+// 🚀 强化版：解决所有边界情况和用户体验问题
 export default function VerifyRequest() {
   const [email, setEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState('');
   const [otpValue, setOtpValue] = useState('');
-  // 移除了timeLeft，不再显示验证码有效期倒计时
-  const [canResend, setCanResend] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
-  // 移除了serverTimeOffset，当前不需要客户端时间同步
+  const [cooldown, setCooldown] = useState(0);
+
   const router = useRouter();
+  const inFlightRef = useRef(false);
 
-  // 状态查询相关接口
-  interface OtpStatusData {
-    sn: number; // server now ms
-    retry: number; // retry cooldown seconds
-    exp: number | null; // expiration timestamp ms, null if no token
-  }
+  const canResend =
+    cooldown === 0 &&
+    !resendLoading &&
+    !isVerifying &&
+    !inFlightRef.current;
 
-  // 查询验证码状态
-  const fetchOtpStatus = async (): Promise<OtpStatusData | null> => {
-    if (!email) return null;
+  // 🎯 简化：只在关键时点查询服务端状态
+  const fetchOtpStatus = useCallback(async () => {
+    if (!email) return;
 
     try {
       const response = await fetch(
@@ -52,263 +56,116 @@ export default function VerifyRequest() {
       const result = await response.json();
 
       if (result.success) {
-        // 移除了时间偏移计算，当前只需要状态数据
-        return result.data;
-      } else {
-        console.error('Failed to fetch OTP status:', result.error);
-        return null;
+        setCooldown(result.data.retry);
       }
     } catch (error) {
-      console.error('OTP status query error:', error);
-      return null;
+      console.error('OTP status fetch error:', error);
     }
-  };
+  }, [email]);
 
-  // 刷新状态并更新UI
-  const refreshStatus = async () => {
-    const status = await fetchOtpStatus();
-    if (status) {
-      setResendCooldown(status.retry);
-      setCanResend(status.retry === 0);
-
-      // UI基于retry字段判断：retry为0时可重发
+  // 🎯 简化：页面初始化时查询状态
+  useEffect(() => {
+    if (email) {
+      fetchOtpStatus();
     }
-  };
+  }, [email, fetchOtpStatus]);
 
-  // 移除了getServerTime函数，当前不需要
-
+  // 🎯 页面初始化：获取邮箱
   useEffect(() => {
     const storedEmail = localStorage.getItem('emailForSignIn');
     if (storedEmail) {
-      // 邮箱统一小写处理
       const normalizedEmail = storedEmail.toLowerCase().trim();
       setEmail(normalizedEmail);
-      // 更新localStorage中的邮箱为规范化格式
       localStorage.setItem('emailForSignIn', normalizedEmail);
-
-      // 页面加载时立即获取最新状态
-      setTimeout(() => {
-        refreshStatus();
-      }, 100); // 稍微延迟，确保状态已设置
     } else {
-      // 如果没有存储的邮箱，说明用户直接访问了这个页面
       router.push('/');
     }
   }, [router]);
 
-  // 智能状态同步策略 - 基于冷却时间动态调整频率
+  // 🎯 简化：单一倒计时定时器
   useEffect(() => {
-    if (!email) return;
+    if (cooldown <= 0) return;
 
-    let syncInterval: NodeJS.Timeout;
+    const timer = setInterval(() => {
+      setCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
 
-    const setupSyncInterval = () => {
-      // 清除现有定时器
-      if (syncInterval) clearInterval(syncInterval);
-
-      // 根据冷却剩余时间决定同步频率
-      let interval = 30000; // 默认30秒
-
-      if (resendCooldown > 0) {
-        if (resendCooldown <= 3) {
-          // 最后3秒：每秒同步，确保精确
-          interval = 1000;
-        } else if (resendCooldown <= 10) {
-          // 最后10秒：每3秒同步
-          interval = 3000;
-        } else if (resendCooldown <= 30) {
-          // 最后30秒：每10秒同步
-          interval = 10000;
-        }
-        // 超过30秒：保持默认30秒同步
-      }
-
-      syncInterval = setInterval(async () => {
-        await refreshStatus();
-      }, interval);
-    };
-
-    // 初始化同步
-    setupSyncInterval();
-
-    return () => {
-      if (syncInterval) clearInterval(syncInterval);
-    };
-  }, [email, resendCooldown]); // 当冷却时间变化时重新设置间隔
-
-  // 重新发送冷却倒计时 + 智能状态刷新
-  useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setInterval(() => {
-        setResendCooldown((prev) => {
-          const newValue = Math.max(0, prev - 1);
-          
-          // 倒计时结束时主动触发状态刷新
-          if (prev > 0 && newValue === 0) {
-            setCanResend(true);
-            // 延迟500ms刷新状态，确保服务端状态已更新
-            setTimeout(() => {
-              refreshStatus();
-            }, 500);
-          }
-          
-          return newValue;
-        });
-      }, 1000);
-      
-      return () => clearInterval(timer);
-    }
-    // 显式返回undefined以满足TypeScript要求
-    return undefined;
-  }, [resendCooldown]);
+    return () => clearInterval(timer);
+  }, [cooldown > 0]);
 
   const verifyOTP = async (value: string) => {
-    if (isVerifying || !value || value.length !== 6) return;
+    if (inFlightRef.current || isVerifying || !value || value.length !== 6)
+      return;
 
-    // 基本的输入验证
+    inFlightRef.current = true;
+
     const token = value.trim();
     if (!/^\d{6}$/.test(token)) {
       setVerificationError('请输入6位数字验证码');
+      inFlightRef.current = false;
       return;
     }
 
     setIsVerifying(true);
     setVerificationError('');
 
+    let result = null;
     try {
-      // 直接验证，不做任何前置状态检查
-      const result = await signIn('otp', {
+      result = await signIn('otp', {
         email,
         code: token,
         redirect: false,
       });
 
       if (result?.error) {
-        // 处理验证错误
         handleVerificationError(result.error);
-        // 验证失败后，异步刷新状态用于UI优化
-        setTimeout(() => refreshStatus(), 500);
       } else if (result?.ok) {
-        // 验证成功，显示成功消息并平滑跳转
         setVerificationError('验证成功，正在跳转...');
-
-        // 清除存储的邮箱信息
         localStorage.removeItem('emailForSignIn');
 
-        // 使用Next.js路由进行SPA跳转，保持应用状态
         setTimeout(() => {
           router.push('/');
-        }, 1500); // 给用户1.5秒看到成功消息
+        }, 1500);
       } else {
-        // 处理未知状态
         handleVerificationError('unknown_error');
+        // 🎯 关键时点：验证失败后查询服务端状态
+        fetchOtpStatus();
       }
     } catch (error) {
-      // 网络错误处理
       console.error('Network error during verification:', error);
-      
-      // 根据错误类型提供具体的用户提示
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        setVerificationError('网络连接异常，请检查网络后重试');
-      } else if (error instanceof Error && error.message.includes('timeout')) {
-        setVerificationError('请求超时，请重试或检查网络连接');
-      } else if (error instanceof Error && error.message.includes('abort')) {
-        setVerificationError('请求被中断，请重试');
-      } else {
-        setVerificationError('验证过程出现异常，请重试或刷新页面');
-      }
+      setVerificationError(getNetworkErrorMessage(error));
+      // 🎯 关键时点：网络错误后也查询服务端状态
+      fetchOtpStatus();
     } finally {
       setIsVerifying(false);
-    }
-  };
-
-  // 验证错误码到用户文案的映射
-  const getErrorMessage = (errorCode: string): string => {
-    switch (errorCode) {
-      case 'invalid_code':
-        return '验证码不正确，请重新输入';
-      case 'invalid_or_expired_code':
-        return '验证码无效或已过期，请重新获取';
-      case 'expired_code':
-        return '验证码已过期，请重新获取';
-      case 'user_blocked':
-        return '该邮箱已被屏蔽，请联系管理员';
-      case 'verification_failed':
-        return '验证失败，请稍后重试';
-      case 'invalid_credentials':
-        return '请输入正确的邮箱和验证码';
-      case 'CredentialsSignin':
-        return '验证码不正确，请重新输入';
-      case 'Signin':
-        return '验证码验证失败，请重新输入';
-      default:
-        return '验证码不正确，请重新输入';
-    }
-  };
-
-  // 解析频率限制中的剩余时间
-  const parseRateLimitInfo = (
-    error: string,
-  ): { remaining: number; message: string } => {
-    const match = error.match(/RATE_LIMITED:(\d+)/);
-    if (match && match[1]) {
-      const remaining = parseInt(match[1], 10);
-      return {
-        remaining,
-        message: `请求过于频繁，请 ${remaining} 秒后重试`,
-      };
-    }
-    return {
-      remaining: 60, // 默认60秒
-      message: '请求过于频繁，请稍后再试',
-    };
-  };
-
-  // 智能重发按钮文案 - 基于验证码状态动态显示
-  const getResendButtonText = () => {
-    if (resendCooldown > 0) {
-      return `重新发送 (${resendCooldown}s)`;
-    }
-    
-    if (resendLoading) {
-      return '发送中...';
-    }
-    
-    // 根据验证码状态提供智能提示
-    if (!canResend) {
-      return '验证码已过期，稍等可重发'; // 在30s容差期内的状态
-    }
-    
-    return '重新发送验证码';
-  };
-
-  // 发送邮件错误码到用户文案的映射
-  const getSendErrorMessage = (
-    errorCode: string,
-  ): { message: string; remaining?: number } => {
-    if (errorCode.startsWith('RATE_LIMITED')) {
-      const { remaining, message } = parseRateLimitInfo(errorCode);
-      return { message, remaining };
-    }
-
-    switch (errorCode) {
-      case 'BLOCKED_EMAIL':
-        return { message: '该邮箱暂不可用，请更换邮箱或联系管理员' };
-      case 'EmailSignin':
-        return { message: '邮件发送失败，请稍后重试' };
-      default:
-        return { message: '发送验证码失败，请稍后重试' };
+      if (!result?.ok) {
+        inFlightRef.current = false;
+      }
     }
   };
 
   const handleVerificationError = (errorCode?: string) => {
-    const newErrorCount = errorCount + 1;
-    setErrorCount(newErrorCount);
-    setOtpValue(''); // 清空输入框
+    setOtpValue('');
     setIsVerifying(false);
 
+    // 🔒 优先检查服务端阻断
+    if (errorCode?.startsWith('verification_blocked_')) {
+      const errorMessage = getOtpErrorMessage(errorCode);
+      setVerificationError(errorMessage);
+      
+      // 服务端阻断时禁用输入并在错误消息显示后返回首页
+      setTimeout(() => {
+        localStorage.removeItem('emailForSignIn');
+        router.push('/');
+      }, 15000);
+      return;
+    }
+
+    // 前端错误计数（作为备选保护）
+    const newErrorCount = errorCount + 1;
+    setErrorCount(newErrorCount);
+
     if (newErrorCount >= 5) {
-      // 5次错误后提供明确的下一步指引
       setVerificationError(
         '验证尝试次数过多，请选择以下方式：\n\n' +
           '• 等待 10 分钟后重新尝试\n' +
@@ -317,15 +174,13 @@ export default function VerifyRequest() {
           '• 联系客服获取帮助',
       );
 
-      // 10秒后跳转到主页
       setTimeout(() => {
         localStorage.removeItem('emailForSignIn');
         router.push('/');
       }, 10000);
     } else {
-      // 根据错误码显示对应的错误信息
       let errorMessage = errorCode
-        ? getErrorMessage(errorCode)
+        ? getOtpErrorMessage(errorCode)
         : '验证码不正确，请重新输入';
 
       if (newErrorCount > 1) {
@@ -334,70 +189,54 @@ export default function VerifyRequest() {
 
       setVerificationError(errorMessage);
 
-      // 10秒后清除错误提示（但保留错误计数）
       setTimeout(() => {
         setVerificationError('');
-        // 异步刷新状态，用于重发按钮控制
-        refreshStatus();
       }, 10000);
     }
   };
 
-
   const handleResendCode = async () => {
-    // 如果按钮显示可点击但实际上还在冷却，先刷新状态
-    if (!canResend || resendLoading) return;
-    
-    if (resendCooldown > 0) {
-      // 冷却中但用户点击了，可能是状态不同步，立即刷新
-      await refreshStatus();
-      return;
-    }
+    if (!canResend) return;
 
     setResendLoading(true);
     setVerificationError('');
-    setOtpValue(''); // 清空输入框
-    setErrorCount(0); // 重置错误计数
+    setOtpValue('');
+    setErrorCount(0);
 
     try {
-      // 使用NextAuth的signIn方法重新发送验证码
       const result = await signIn('email', {
         email,
         redirect: false,
       });
 
-      // 不管成功还是失败，都查询最新状态
-      await refreshStatus();
-
       if (result?.error) {
-        // 处理发送错误（向后兼容现有错误处理）
         const errorInfo = getSendErrorMessage(result.error);
         setVerificationError(errorInfo.message);
       } else {
         setVerificationError('新的验证码已发送到您的邮箱');
-        // 10秒后清除成功消息
+
         setTimeout(() => {
           setVerificationError('');
         }, 10000);
       }
     } catch (error) {
-      // 🔧 增强重发验证码的网络错误处理
       console.error('Network error during resend:', error);
-      
-      // 根据错误类型提供具体的用户提示
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        setVerificationError('网络连接异常，无法发送验证码，请检查网络后重试');
-      } else if (error instanceof Error && error.message.includes('timeout')) {
-        setVerificationError('发送请求超时，请重试或检查网络连接');
-      } else {
-        setVerificationError('发送验证码失败，请检查网络连接后重试');
-      }
-      
-      // 即使出错也尝试刷新状态
-      await refreshStatus();
+      setVerificationError(`发送验证码失败：${getNetworkErrorMessage(error)}`);
     } finally {
       setResendLoading(false);
+      // 🎯 关键时点：重发后查询服务端状态（无论成功失败）
+      fetchOtpStatus();
     }
+  };
+
+  const getResendButtonText = () => {
+    if (cooldown > 0) {
+      return `重新发送 (${cooldown}s)`;
+    }
+    if (resendLoading) {
+      return '发送中...';
+    }
+    return '重新发送验证码';
   };
 
   return (
@@ -442,7 +281,10 @@ export default function VerifyRequest() {
             <Alert
               borderRadius="md"
               status={
-                verificationError.includes('已发送') || verificationError.includes('验证成功') ? 'success' : 'error'
+                verificationError.includes('已发送') ||
+                verificationError.includes('验证成功')
+                  ? 'success'
+                  : 'error'
               }
             >
               <AlertIcon />
@@ -454,52 +296,53 @@ export default function VerifyRequest() {
 
           <Box pos="relative">
             <Flex justify="center" gap={1.5}>
-              <PinInput
-                autoFocus
-                colorScheme={verificationError ? 'red' : 'purple'}
-                focusBorderColor={
-                  verificationError ? 'red.500' : 'brand.purple'
-                }
-                isDisabled={isVerifying || errorCount >= 5}
-                onChange={setOtpValue}
-                onComplete={verifyOTP}
-                otp
-                size={'lg'}
-                value={otpValue}
-              >
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-                <PinInputField
-                  borderColor={verificationError ? 'red.400' : 'gray.400'}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                />
-              </PinInput>
+              {(() => {
+                const isServerBlocked = verificationError?.includes('验证尝试次数过多，请') && 
+                                      verificationError?.includes('分钟后重试');
+                const shouldDisable =
+                  isVerifying || inFlightRef.current || errorCount >= 5 || isServerBlocked;
+
+                return (
+                  <PinInput
+                    autoFocus
+                    colorScheme={verificationError ? 'red' : 'purple'}
+                    focusBorderColor={
+                      verificationError ? 'red.500' : 'brand.purple'
+                    }
+                    isDisabled={shouldDisable}
+                    onChange={setOtpValue}
+                    onComplete={(value) => {
+                      if (!shouldDisable) {
+                        verifyOTP(value);
+                      }
+                    }}
+                    otp
+                    size={'lg'}
+                    value={otpValue}
+                  >
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <PinInputField
+                        key={index}
+                        borderColor={verificationError ? 'red.400' : 'gray.400'}
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === 'Enter' &&
+                            otpValue.length === 6 &&
+                            !shouldDisable
+                          ) {
+                            e.preventDefault();
+                            verifyOTP(otpValue);
+                          }
+                        }}
+                      />
+                    ))}
+                  </PinInput>
+                );
+              })()}
             </Flex>
-            {isVerifying && (
+            {(isVerifying || inFlightRef.current) && (
               <Flex
                 pos="absolute"
                 top="0"
@@ -508,9 +351,14 @@ export default function VerifyRequest() {
                 left="0"
                 align="center"
                 justify="center"
-                bg="rgba(255, 255, 255, 0.8)"
+                direction="column"
+                gap={2}
+                bg="rgba(255, 255, 255, 0.9)"
               >
-                <Spinner color="purple.500" />
+                <Spinner color="purple.500" size="lg" />
+                <Text color="purple.600" fontSize="sm" fontWeight="medium">
+                  正在验证...
+                </Text>
               </Flex>
             )}
           </Box>
@@ -522,7 +370,7 @@ export default function VerifyRequest() {
 
             <Button
               w="full"
-              isDisabled={!canResend || resendCooldown > 0 || resendLoading}
+              isDisabled={!canResend || errorCount >= 5 || (verificationError?.includes('验证尝试次数过多，请') && verificationError?.includes('分钟后重试'))}
               isLoading={resendLoading}
               onClick={handleResendCode}
               size="sm"

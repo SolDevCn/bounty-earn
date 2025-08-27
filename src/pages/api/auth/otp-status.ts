@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import {
+  makeTimeCtx,
+  RATE_LIMIT_MS,
+  RESEND_TOLERANCE_MS,
+  TOKEN_EXPIRE_MS,
+} from '@/lib/auth/constants';
 import { prisma } from '@/prisma';
-
-// 验证码时间配置常量 - 与nextauth.ts保持一致
-const RATE_LIMIT_MS = 60 * 1000; // 60秒发送限制
-const RESEND_TOLERANCE_MS = 30 * 1000; // 重发容差30秒（仅重发时宽松）
 
 interface TimeStatus {
   retryCooldownSeconds: number;
@@ -22,9 +24,9 @@ interface OtpStatusResponse {
 
 // 核心时间判断函数 - 计算重发冷却时间
 function checkVerificationTokenStatus(
-  latestToken: { createdAt: Date } | null,
+  latestToken: { createdAt: Date; expires: Date } | null,
   activeToken: { expires: Date } | null,
-  serverNow: number
+  serverNow: number,
 ): TimeStatus {
   // 优先级1: 发送频率限制（最高优先级）- 基于最近创建时间
   if (latestToken) {
@@ -36,7 +38,7 @@ function checkVerificationTokenStatus(
       };
     }
   }
-  
+
   // 优先级2: 重发容差期判断 - 基于活跃token的过期时间
   if (activeToken) {
     // 有活跃token，可以重发
@@ -44,14 +46,14 @@ function checkVerificationTokenStatus(
       retryCooldownSeconds: 0,
     };
   }
-  
+
   // 优先级3: 容差期判断（如果有最近token但已过期）
   if (latestToken) {
-    // 需要计算最近token的过期时间（假设10分钟有效期）
-    const TOKEN_EXPIRE_MS = 10 * 60 * 1000;
-    const estimatedExpireTime = latestToken.createdAt.getTime() + TOKEN_EXPIRE_MS;
+    // 使用统一的验证码有效期常量
+    const estimatedExpireTime =
+      latestToken.createdAt.getTime() + TOKEN_EXPIRE_MS;
     const resendAllowTime = estimatedExpireTime + RESEND_TOLERANCE_MS;
-    
+
     if (serverNow >= estimatedExpireTime) {
       const cooldownRemaining = Math.max(0, resendAllowTime - serverNow);
       return {
@@ -59,7 +61,7 @@ function checkVerificationTokenStatus(
       };
     }
   }
-  
+
   // 情况4: 没有任何token，可以发送
   return {
     retryCooldownSeconds: 0,
@@ -78,7 +80,7 @@ function calculateTokenExpireTimestamp(
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<OtpStatusResponse>
+  res: NextApiResponse<OtpStatusResponse>,
 ) {
   if (req.method !== 'GET') {
     return res.status(405).json({
@@ -98,43 +100,38 @@ export default async function handler(
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    // 统一时间基准 - 全链路复用
-    const serverNow = Date.now();
-    const nowDt = new Date(serverNow);
+    // 🚀 使用统一时间上下文，确保时间一致性
+    const { nowMs: serverNow } = makeTimeCtx();
 
-    // 分离查询：冷却检查（不筛过期）+ 过期检查（只看未过期）
-    
-    // 1. 冷却检查 - 看最近一次创建时间（不筛过期）
-    const latestAnyToken = await prisma.verificationToken.findFirst({
+    // 🚀 优化：单次查询获取所有需要的验证码信息
+    const tokens = await prisma.verificationToken.findMany({
       where: {
         identifier: normalizedEmail,
       },
       select: {
         createdAt: true,
+        expires: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
+      take: 5, // 只取最近的5个，足够判断状态
     });
 
-    // 2. 过期检查 - 看所有未过期中最晚过期的
-    const activeToken = await prisma.verificationToken.findFirst({
-      where: {
-        identifier: normalizedEmail,
-        expires: {
-          gt: nowDt,
-        },
-      },
-      select: {
-        expires: true,
-      },
-      orderBy: {
-        expires: 'desc',
-      },
-    });
+    // 🚀 从查询结果中提取需要的信息，确保类型安全
+    const latestAnyToken: { createdAt: Date; expires: Date } | null =
+      tokens.length > 0 ? tokens[0]! : null;
+    const activeTokens = tokens
+      .filter((token) => token.expires.getTime() > serverNow)
+      .sort((a, b) => b.expires.getTime() - a.expires.getTime());
+    const activeToken: { expires: Date } | null = activeTokens[0] ?? null;
 
     // 使用分离的数据进行统一判断
-    const timeStatus = checkVerificationTokenStatus(latestAnyToken, activeToken, serverNow);
+    const timeStatus = checkVerificationTokenStatus(
+      latestAnyToken,
+      activeToken,
+      serverNow,
+    );
 
     // 计算验证码过期时间戳
     const expireTimestamp = calculateTokenExpireTimestamp(activeToken);
@@ -152,7 +149,7 @@ export default async function handler(
     });
   } catch (error) {
     console.error('OTP status query error:', error);
-    
+
     // 保守兜底：返回安全的默认值，不阻塞前端操作
     const fallbackNow = Date.now();
     res.setHeader('Cache-Control', 'no-store');
