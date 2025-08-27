@@ -5,6 +5,7 @@ import { prisma } from '@/prisma';
 // 验证码时间配置常量 - 与nextauth.ts保持一致
 const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
 const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
+const VERIFICATION_TOLERANCE_MS = 5 * 1000; // 验证容错5秒，减少时间同步问题
 
 interface TimeStatus {
   canSend: boolean;
@@ -111,10 +112,13 @@ export default async function handler(
     const normalizedEmail = email.toLowerCase().trim();
     const serverNow = Date.now(); // 统一时间基准
 
-    // 查找最新的验证码
+    // 🔐 查找最新的未过期验证码用于状态判断
     const latestToken = await prisma.verificationToken.findFirst({
       where: {
         identifier: normalizedEmail,
+        expires: {
+          gt: new Date(serverNow - 24 * 60 * 60 * 1000), // 查找24小时内的验证码用于状态分析
+        },
       },
       orderBy: {
         createdAt: 'desc',

@@ -169,11 +169,12 @@ export default function VerifyRequest() {
   }, [resendCooldown]);
 
   const verifyOTP = async (value: string) => {
-    if (isVerifying || !value || value.length !== 6) return;
+    if (isVerifying || !value) return;
 
-    // 基本的输入验证
-    const token = value.trim();
-    if (!/^\d{6}$/.test(token)) {
+    // 🔧 宽松的输入验证 - 自动清理非数字字符
+    const token = value.replace(/\D/g, ''); // 移除所有非数字字符
+    
+    if (token.length !== 6) {
       setVerificationError('请输入6位数字验证码');
       return;
     }
@@ -225,23 +226,23 @@ export default function VerifyRequest() {
     }
   };
 
-  // 验证错误码到用户文案的映射
+  // 🔧 精确的验证错误码到用户友好文案的映射
   const getErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
       case 'invalid_code':
-        return '验证码不正确，请重新输入';
-      case 'invalid_or_expired_code':
-        return '验证码无效或已过期，请重新获取';
+        return '验证码不正确，请检查输入的6位数字是否与邮件中的验证码一致';
       case 'expired_code':
-        return '验证码已过期，请重新获取';
+        return '验证码已过期（有效期10分钟），请点击"重新发送验证码"获取新的验证码';
+      case 'invalid_or_expired_code':
+        return '验证码无效或已过期，请点击"重新发送验证码"获取新的验证码';
       case 'user_blocked':
-        return '该邮箱已被屏蔽，请联系管理员';
+        return '该邮箱暂时不可用，请更换其他邮箱或联系客服';
       case 'verification_failed':
-        return '验证失败，请稍后重试';
+        return '验证过程出现异常，请稍后重试或刷新页面重新开始';
       case 'invalid_credentials':
-        return '请输入正确的邮箱和验证码';
+        return '验证信息有误，请确认邮箱和验证码都正确';
       default:
-        return '验证码不正确，请重新输入';
+        return '验证码输入有误。提示：请确保输入邮件中收到的完整6位数字验证码';
     }
   };
 
@@ -309,11 +310,11 @@ export default function VerifyRequest() {
     if (newErrorCount >= 5) {
       // 5次错误后提供明确的下一步指引
       setVerificationError(
-        '验证尝试次数过多，请选择以下方式：\n\n' +
-          '• 等待 10 分钟后重新尝试\n' +
-          '• 更换其他邮箱地址\n' +
-          '• 检查垃圾邮件文件夹\n' +
-          '• 联系客服获取帮助',
+        '验证尝试次数过多，为保护账户安全，请稍后重试：\n\n' +
+          '📧 检查邮箱中是否有新的验证码\n' +
+          '🔄 等待10分钟后重新尝试\n' +
+          '📂 查看垃圾邮件文件夹\n' +
+          '✉️ 或更换其他邮箱地址',
       );
 
       // 10秒后跳转到主页
@@ -322,21 +323,27 @@ export default function VerifyRequest() {
         router.push('/');
       }, 10000);
     } else {
-      // 根据错误码显示对应的错误信息
-      let errorMessage = errorCode
-        ? getErrorMessage(errorCode)
-        : '验证码不正确，请重新输入';
+      // 🔧 根据错误码显示精确的错误信息
+      let errorMessage = errorCode ? getErrorMessage(errorCode) : '验证码输入有误，请重新检查';
+
+      // 为过期验证码提供额外的帮助信息
+      if (errorCode === 'expired_code') {
+        errorMessage += '\n\n💡 提示：验证码从发送时开始计算10分钟有效期';
+      } else if (errorCode === 'invalid_code') {
+        errorMessage += '\n\n💡 提示：请确保输入的是最新收到的验证码';
+      }
 
       if (newErrorCount > 1) {
-        errorMessage += `。剩余尝试次数：${5 - newErrorCount}`;
+        errorMessage += `\n\n剩余尝试次数：${5 - newErrorCount}`;
       }
 
       setVerificationError(errorMessage);
 
-      // 10秒后清除错误提示（但保留错误计数）
+      // 根据错误类型决定清除时间
+      const clearTimeout = errorCode === 'expired_code' ? 15000 : 10000;
       setTimeout(() => {
         setVerificationError('');
-      }, 10000);
+      }, clearTimeout);
     }
   };
 
@@ -458,7 +465,11 @@ export default function VerifyRequest() {
                   verificationError ? 'red.500' : 'brand.purple'
                 }
                 isDisabled={isVerifying || errorCount >= 5}
-                onChange={setOtpValue}
+                onChange={(value) => {
+                  // 🔧 实时清理输入 - 只保留数字
+                  const cleaned = value.replace(/\D/g, '');
+                  setOtpValue(cleaned);
+                }}
                 onComplete={verifyOTP}
                 otp
                 size={'lg'}
@@ -514,7 +525,7 @@ export default function VerifyRequest() {
 
           <VStack w="full" spacing={3}>
             <Text color="#64748B" fontSize="sm" textAlign="center">
-              请输入收到的6位验证码
+              请输入收到的6位验证码（支持直接粘贴，会自动清理格式）
             </Text>
 
             <Button
@@ -538,7 +549,7 @@ export default function VerifyRequest() {
             </Button>
 
             <Text maxW="sm" color="#94A3B8" fontSize="xs" textAlign="center">
-              请检查您的邮箱（包括垃圾邮件文件夹）。如果您多次点击了重发，任何一个有效的验证码都可以使用。
+              💡 小贴士：复制粘贴验证码时不用担心格式问题，系统会自动清理空格和其他字符。请检查您的邮箱（包括垃圾邮件文件夹）。
             </Text>
           </VStack>
         </VStack>

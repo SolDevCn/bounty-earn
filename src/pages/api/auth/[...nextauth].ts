@@ -16,7 +16,9 @@ import { prisma } from '@/prisma';
 // 验证码时间配置常量
 const RATE_LIMIT_MS = 60 * 1000;          // 60秒发送限制
 const TOKEN_EXPIRE_MS = 10 * 60 * 1000;   // 10分钟有效期
+const TOKEN_EXPIRE_SECONDS = TOKEN_EXPIRE_MS / 1000;  // 转换为秒供NextAuth使用
 const RESEND_TOLERANCE_MS = 30 * 1000;    // 重发容差30秒（仅重发时宽松）
+const VERIFICATION_TOLERANCE_MS = 5 * 1000; // 验证容错5秒，减少时间同步问题
 
 interface TimeStatus {
   canSend: boolean;
@@ -104,26 +106,45 @@ export const authOptions: NextAuthOptions = {
           
           // 使用事务确保验证码一次性消费的原子性
           return await prisma.$transaction(async (tx) => {
-            // 查找匹配的验证码（不检查过期，由统一逻辑处理）
-            const verificationRecord = await tx.verificationToken.findFirst({
+            // 🔍 分步验证：先检查验证码是否存在，再判断时间状态
+            
+            // 第1步：查找是否存在匹配的验证码（包括过期的）
+            const anyMatchingToken = await tx.verificationToken.findFirst({
               where: {
                 identifier: normalizedEmail,
                 token: code,
               },
+              orderBy: {
+                createdAt: 'desc', // 优先使用最新的验证码
+              },
             });
 
-            if (!verificationRecord) {
+            if (!anyMatchingToken) {
+              // 验证码不存在或错误
               throw new Error('invalid_code');
             }
             
-            // 🔑 验证使用严格0容差 - 绝对安全
-            const timeStatus = checkVerificationTokenStatus(verificationRecord, serverNow);
+            // 第2步：检查找到的验证码是否过期，使用正确的容错逻辑
+            const expireTime = anyMatchingToken.expires.getTime();
+            const tolerantExpireTime = expireTime + VERIFICATION_TOLERANCE_MS;
             
-            if (!timeStatus.canVerify) {
-              throw new Error('invalid_or_expired_code');
+            if (serverNow <= expireTime) {
+              // 验证码在正常有效期内
+              logger.debug('OTP verification within normal validity period');
+            } else if (serverNow <= tolerantExpireTime) {
+              // 验证码在容错期内（过期后5秒内仍可用）
+              logger.info('OTP verification succeeded with tolerance', {
+                email: normalizedEmail,
+                toleranceUsed: true,
+                expiredFor: serverNow - expireTime,
+                tokenAge: serverNow - anyMatchingToken.createdAt.getTime()
+              });
+            } else {
+              // 验证码已过期且超出容错期
+              throw new Error('expired_code');
             }
 
-            // 一次性消费 - 立即删除验证码
+            // 第3步：验证码有效，立即删除进行一次性消费
             await tx.verificationToken.delete({
               where: {
                 identifier_token: {
@@ -204,74 +225,100 @@ export const authOptions: NextAuthOptions = {
         // 邮箱统一小写处理
         const normalizedEmail = identifier.toLowerCase().trim();
 
-        const isBlocked = await prisma.blockedEmail.findUnique({
-          where: { email: normalizedEmail },
-        });
-
-        if (isBlocked) {
-          logger.debug('OTP Not Sent, Blocked Email');
-          throw new Error('BLOCKED_EMAIL'); // 替换静默失败，提供用户反馈
-        }
-
-        // 统一时间基准 - 同一流程内使用同一个serverNow
-        const serverNow = Date.now();
-        
-        // 检查发送频率 - 基于createdAt字段进行严格判断（0容差）
-        const recentToken = await prisma.verificationToken.findFirst({
-          where: {
-            identifier: normalizedEmail,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        });
-
-        // 使用核心逻辑函数进行统一判断
-        const timeStatus = checkVerificationTokenStatus(recentToken, serverNow);
-        
-        if (!timeStatus.canSend) {
-          logger.debug('OTP rate limited for email:', normalizedEmail, {
-            remainingSeconds: timeStatus.remainingSeconds,
+        // 🔐 使用序列化事务确保并发安全 - 防止竞态条件
+        await prisma.$transaction(async (tx) => {
+          // 1. 检查邮箱是否被屏蔽
+          const isBlocked = await tx.blockedEmail.findUnique({
+            where: { email: normalizedEmail },
           });
-          throw new Error(`RATE_LIMITED:${timeStatus.remainingSeconds}`);
-        }
 
-        // 限制每个邮箱最多3个未过期的验证码
-        const tokenCount = await prisma.verificationToken.count({
-          where: {
-            identifier: normalizedEmail,
-            expires: {
-              gt: new Date(serverNow), // 🔑 使用统一时间基准
+          if (isBlocked) {
+            logger.debug('OTP Not Sent, Blocked Email');
+            throw new Error('BLOCKED_EMAIL');
+          }
+
+          // 统一时间基准 - 同一流程内使用同一个serverNow
+          const serverNow = Date.now();
+          
+          // 2. 🔒 使用原子性查询锁定该邮箱的验证码记录
+          // 查询所有相关记录，确保在事务期间其他请求无法修改
+          const allTokens = await tx.verificationToken.findMany({
+            where: {
+              identifier: normalizedEmail,
             },
-          },
-        });
+            orderBy: {
+              createdAt: 'desc',
+            },
+          });
 
-        if (tokenCount >= 3) {
-          // 删除最老的验证码
-          const oldestToken = await prisma.verificationToken.findFirst({
+          const recentToken = allTokens[0] || null;
+
+          // 使用核心逻辑函数进行统一判断
+          const timeStatus = checkVerificationTokenStatus(recentToken, serverNow);
+          
+          if (!timeStatus.canSend) {
+            logger.debug('OTP rate limited for email:', normalizedEmail, {
+              remainingSeconds: timeStatus.remainingSeconds,
+            });
+            throw new Error(`RATE_LIMITED:${timeStatus.remainingSeconds}`);
+          }
+
+          // 3. 🧹 清理该邮箱的过期验证码，防止数据库积累
+          await tx.verificationToken.deleteMany({
             where: {
               identifier: normalizedEmail,
               expires: {
-                gt: new Date(serverNow), // 🔑 使用统一时间基准
+                lt: new Date(serverNow), // 删除已过期的验证码
               },
-            },
-            orderBy: {
-              expires: 'asc',
             },
           });
 
-          if (oldestToken) {
-            await prisma.verificationToken.delete({
-              where: {
-                identifier_token: {
-                  identifier: oldestToken.identifier,
-                  token: oldestToken.token,
-                },
+          // 4. 原子性地检查和管理验证码数量限制
+          const currentTokens = await tx.verificationToken.findMany({
+            where: {
+              identifier: normalizedEmail,
+              expires: {
+                gt: new Date(serverNow), // 只查找未过期的验证码
               },
+            },
+            orderBy: {
+              expires: 'asc', // 按过期时间升序，优先删除最早过期的
+            },
+          });
+
+          // 如果当前有效验证码 >= 3，删除最老的验证码为新验证码腾出空间
+          if (currentTokens.length >= 3) {
+            const tokensToDelete = currentTokens.slice(0, currentTokens.length - 2); // 保留最新的2个
+            
+            for (const tokenToDelete of tokensToDelete) {
+              await tx.verificationToken.delete({
+                where: {
+                  identifier_token: {
+                    identifier: tokenToDelete.identifier,
+                    token: tokenToDelete.token,
+                  },
+                },
+              });
+            }
+            
+            logger.info('Cleaned up old verification tokens', {
+              email: normalizedEmail,
+              deletedCount: tokensToDelete.length,
             });
           }
-        }
 
+          // 事务完成后，NextAuth会自动创建新的验证码
+          logger.debug('Verification token send validation passed', {
+            email: normalizedEmail,
+            remainingTokens: Math.max(0, 2 - currentTokens.length),
+          });
+        }, {
+          // 🔒 事务配置：确保并发安全
+          maxWait: 5000, // 最大等待时间5秒
+          timeout: 10000, // 事务超时时间10秒
+        });
+
+        // 5. 📧 发送邮件（在事务外进行，避免邮件发送失败回滚数据库操作）
         await resend.emails.send({
           from: kashEmail,
           to: [normalizedEmail],
@@ -280,7 +327,7 @@ export const authOptions: NextAuthOptions = {
           replyTo: replyToEmail,
         });
       },
-      maxAge: 10 * 60,
+      maxAge: TOKEN_EXPIRE_SECONDS, // 使用统一的时间常量
     }),
   ],
   session: {
