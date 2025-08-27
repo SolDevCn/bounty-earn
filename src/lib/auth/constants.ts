@@ -51,9 +51,10 @@ export function makeTimeCtx() {
   };
 }
 
+import crypto from 'node:crypto';
+
 // 生成安全的6位数字验证码
 export function generateSecureOTP(): string {
-  const crypto = require('crypto');
   // 使用加密随机数生成6位数字
   let code = '';
   for (let i = 0; i < 6; i++) {

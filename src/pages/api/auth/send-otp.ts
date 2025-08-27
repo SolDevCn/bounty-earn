@@ -1,11 +1,13 @@
+import crypto from 'node:crypto';
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { kashEmail, replyToEmail, resend } from '@/features/emails';
 import {
+  generateSecureOTP,
+  makeTimeCtx,
   OTP_CONFIG,
   OTP_ERROR_CODES,
-  makeTimeCtx,
-  generateSecureOTP,
   validateEmail,
 } from '@/lib/auth/constants';
 import logger, { maskSensitiveData } from '@/lib/logger';
@@ -13,11 +15,11 @@ import { prisma } from '@/prisma';
 
 interface SendOtpResponse {
   success: boolean;
-  sn?: number;        // 服务器当前毫秒时间
-  retry?: number;     // 重试等待秒数，0表示可以发送
-  exp?: number;       // 最新token过期毫秒时间
-  code?: string;      // 错误码
-  message?: string;   // 可选的提示信息
+  sn?: number; // 服务器当前毫秒时间
+  retry?: number; // 重试等待秒数，0表示可以发送
+  exp?: number; // 最新token过期毫秒时间
+  code?: string; // 错误码
+  message?: string; // 可选的提示信息
 }
 
 // 生成验证码邮件HTML
@@ -37,7 +39,7 @@ function createOTPEmailHTML(token: string): string {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SendOtpResponse>
+  res: NextApiResponse<SendOtpResponse>,
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -65,7 +67,7 @@ export default async function handler(
 
   const normalizedEmail = email.toLowerCase().trim();
   const timeCtx = makeTimeCtx(); // 统一时间基准
-  
+
   // 生成调试ID
   const debugId = Math.random().toString(36).substring(2, 11);
 
@@ -91,26 +93,31 @@ export default async function handler(
 
       // 2. 发送限流：直接使用 expires 阈值判断，避免时间反推
       // nowMs/nowDt 来自同一次 makeTimeCtx()
-      const expiresThreshold = new Date(timeCtx.nowMs + OTP_CONFIG.TOKEN_EXPIRE_MS - OTP_CONFIG.RATE_LIMIT_MS);
+      const expiresThreshold = new Date(
+        timeCtx.nowMs + OTP_CONFIG.TOKEN_EXPIRE_MS - OTP_CONFIG.RATE_LIMIT_MS,
+      );
 
       // 存在 expires > 阈值 => 表示 60s 内发过
       const recent = await tx.verificationToken.findFirst({
         where: {
           identifier: normalizedEmail,
-          expires: { gt: expiresThreshold }
+          expires: { gt: expiresThreshold },
         },
         select: { expires: true },
       });
 
       if (recent) {
-        const remainingMs = recent.expires.getTime() - expiresThreshold.getTime();
+        const remainingMs =
+          recent.expires.getTime() - expiresThreshold.getTime();
         const retry = Math.max(1, Math.ceil(remainingMs / 1000));
         throw new Error(`${OTP_ERROR_CODES.RATE_LIMITED}:${retry}`);
       }
 
       // 4. 清理过期的验证码（🔧 修复：验证容错 = 清理保留原则）
       // 原则：凡是验证还会放行的token，清理阶段就不能删
-      const cleanupExpiry = new Date(timeCtx.nowMs - OTP_CONFIG.VERIFICATION_TOLERANCE_MS);
+      const cleanupExpiry = new Date(
+        timeCtx.nowMs - OTP_CONFIG.VERIFICATION_TOLERANCE_MS,
+      );
       await tx.verificationToken.deleteMany({
         where: {
           identifier: normalizedEmail,
@@ -129,7 +136,9 @@ export default async function handler(
 
       if (activeTokens.length >= OTP_CONFIG.MAX_ACTIVE_TOKENS_PER_EMAIL) {
         // 删除最旧的token，为新token腾出空间
-        const tokensToDelete = activeTokens.slice(OTP_CONFIG.MAX_ACTIVE_TOKENS_PER_EMAIL - 1);
+        const tokensToDelete = activeTokens.slice(
+          OTP_CONFIG.MAX_ACTIVE_TOKENS_PER_EMAIL - 1,
+        );
         for (const token of tokensToDelete) {
           await tx.verificationToken.delete({
             where: {
@@ -166,7 +175,11 @@ export default async function handler(
 
     // 事务外发送邮件 - 🔒 安全：失败时立即删除验证码，避免幽灵码
     const emailStartTime = Date.now();
-    const tokenFingerprint = require('crypto').createHash('sha256').update(newToken.token).digest('hex').substring(0, 8);
+    const tokenFingerprint = crypto
+      .createHash('sha256')
+      .update(newToken.token)
+      .digest('hex')
+      .substring(0, 8);
 
     try {
       const emailHtml = createOTPEmailHTML(newToken.token);
@@ -206,7 +219,8 @@ export default async function handler(
       });
     } catch (emailError) {
       const emailDuration = Date.now() - emailStartTime;
-      const errorCode = emailError instanceof Error ? emailError.message : 'unknown_error';
+      const errorCode =
+        emailError instanceof Error ? emailError.message : 'unknown_error';
 
       // 🔒 CRITICAL 安全修复：邮件发送失败，立即删除验证码避免幽灵码
       try {
@@ -237,21 +251,26 @@ export default async function handler(
           debugId,
           action: 'TOKEN_DELETED',
         });
-
       } catch (deleteError) {
         // 🚨 删除失败是严重安全问题，需要立即告警
-        const deleteErrorCode = deleteError instanceof Error ? deleteError.message : 'unknown_delete_error';
+        const deleteErrorCode =
+          deleteError instanceof Error
+            ? deleteError.message
+            : 'unknown_delete_error';
 
         if (OTP_CONFIG.DEBUG_LOG_ENABLED) {
-          console.error(`🚨 [SEND-${debugId}] CRITICAL: 验证码删除失败，存在泄露风险`, {
-            email: normalizedEmail,
-            tokenFingerprint, // 🔒 安全：只记录哈希指纹
-            emailDuration,
-            emailError: errorCode,
-            deleteError: deleteErrorCode,
-            action: 'TOKEN_DELETE_FAILED',
-            severity: 'CRITICAL',
-          });
+          console.error(
+            `🚨 [SEND-${debugId}] CRITICAL: 验证码删除失败，存在泄露风险`,
+            {
+              email: normalizedEmail,
+              tokenFingerprint, // 🔒 安全：只记录哈希指纹
+              emailDuration,
+              emailError: errorCode,
+              deleteError: deleteErrorCode,
+              action: 'TOKEN_DELETE_FAILED',
+              severity: 'CRITICAL',
+            },
+          );
         }
 
         logger.error('CRITICAL: Token deletion failed after email failure', {
@@ -274,12 +293,12 @@ export default async function handler(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
+
     // 解析限流错误
     if (errorMessage.startsWith(OTP_ERROR_CODES.RATE_LIMITED)) {
       const [, remainingStr] = errorMessage.split(':');
       const remainingSeconds = remainingStr ? parseInt(remainingStr, 10) : 0;
-      
+
       return res.status(429).json({
         success: false,
         code: OTP_ERROR_CODES.RATE_LIMITED,
