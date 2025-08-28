@@ -16,6 +16,8 @@ export const FeedCardLink = ({
   style?: LinkBoxProps;
   children: ReactNode;
 }) => {
+  const isInternalLink = href?.startsWith('/') || href?.startsWith('./') || href?.startsWith('../');
+
   return (
     <LinkBox
       alignItems={'center'}
@@ -24,7 +26,11 @@ export const FeedCardLink = ({
       {...style}
       display={{ base: 'none', md: 'flex' }}
     >
-      <LinkOverlay href={href} rel="noopener noreferrer" target="_blank">
+      <LinkOverlay
+        href={href}
+        rel={isInternalLink ? undefined : "noopener noreferrer"}
+        target={isInternalLink ? undefined : "_blank"}
+      >
         <Text
           as="span"
           color={'#6366F1'}

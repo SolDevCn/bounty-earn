@@ -45,7 +45,9 @@ function PillTab({ href, children, altActive, phEvent }: PillTabProps) {
         bg: '#F5F3FF',
       }}
       href={href}
-      onClick={() => posthog.capture(phEvent)}
+      onClick={(e) => {
+        posthog.capture(phEvent);
+      }}
       rounded="full"
     >
       {children}

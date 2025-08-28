@@ -1,27 +1,52 @@
 export const getURLSanitized = (url: string) => {
   if (!url || url === '-' || url === '#') return url;
 
-  // 如果是相对路径（以/开头），直接返回
-  if (url.startsWith('/')) {
-    return url;
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return url;
+
+  // 如果是相对路径，直接返回
+  if (
+    trimmedUrl.startsWith('/') ||
+    trimmedUrl.startsWith('./') ||
+    trimmedUrl.startsWith('../')
+  ) {
+    return trimmedUrl;
+  }
+
+  // 如果已经有协议（包括特殊协议），直接返回
+  if (trimmedUrl.includes('://') || trimmedUrl.includes(':')) {
+    // 检查是否是特殊协议
+    const specialProtocols = [
+      'mailto:',
+      'tel:',
+      'sms:',
+      'data:',
+      'javascript:',
+    ];
+    if (specialProtocols.some((protocol) => trimmedUrl.startsWith(protocol))) {
+      return trimmedUrl;
+    }
+    // 如果包含://，说明已经是完整URL
+    if (trimmedUrl.includes('://')) {
+      return trimmedUrl;
+    }
   }
 
   const isEmail =
-    url.includes('@') && !url.includes('http://') && !url.includes('https://');
+    trimmedUrl.includes('@') &&
+    !trimmedUrl.includes('://') &&
+    !trimmedUrl.startsWith('mailto:');
 
   if (isEmail) {
-    return `mailto:${url}`;
+    return `mailto:${trimmedUrl}`;
   }
 
-  if (
-    !url.includes('https://') &&
-    !url.includes('http://') &&
-    !url.includes('www')
-  ) {
-    return `https://${url}`;
+  // 如果不是以www.开头且不包含协议，添加https://
+  if (!trimmedUrl.startsWith('www.')) {
+    return `https://${trimmedUrl}`;
   }
 
-  return url;
+  return `https://${trimmedUrl}`;
 };
 
 export const getTwitterUrl = (raw: string) => {
