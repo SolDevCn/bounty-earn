@@ -25,6 +25,7 @@ export default function VerifyRequest() {
   const [email, setEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState('');
+  const [verificationSuccess, setVerificationSuccess] = useState('');
   const [otpValue, setOtpValue] = useState('');
   // 移除了timeLeft，不再显示验证码有效期倒计时
   const [canResend, setCanResend] = useState(false);
@@ -37,8 +38,8 @@ export default function VerifyRequest() {
 
   // 状态查询相关接口 - 适配新的三字段格式
   interface OtpStatusData {
-    sn: number;        // 服务器当前毫秒时间
-    retry: number;     // 重试等待秒数，0表示可以发送
+    sn: number; // 服务器当前毫秒时间
+    retry: number; // 重试等待秒数，0表示可以发送
     exp: number | null; // 最新token过期毫秒时间，null表示没有
   }
 
@@ -124,16 +125,16 @@ export default function VerifyRequest() {
       const timer = setInterval(() => {
         setResendCooldown((prev) => {
           const newValue = Math.max(0, prev - 1);
-          
+
           // 倒计时结束时设置可重发
           if (prev > 0 && newValue === 0) {
             setCanResend(true);
           }
-          
+
           return newValue;
         });
       }, 1000);
-      
+
       return () => clearInterval(timer);
     }
     return undefined;
@@ -172,7 +173,8 @@ export default function VerifyRequest() {
 
       if (result?.ok) {
         // 验证成功，显示成功消息并平滑跳转
-        setVerificationError('验证成功，正在跳转...');
+        setVerificationError('');
+        setVerificationSuccess('验证成功，正在跳转...');
 
         // 清除存储的邮箱信息
         localStorage.removeItem('emailForSignIn');
@@ -246,21 +248,24 @@ export default function VerifyRequest() {
     if (resendCooldown > 0) {
       return `重新发送 (${resendCooldown}s)`;
     }
-    
+
     if (resendLoading) {
       return '发送中...';
     }
-    
+
     // 🎁 特殊提示：如果刚发生 verification_failed
-    if (verificationError.includes('验证异常') || verificationError.includes('免冷却')) {
+    if (
+      verificationError.includes('验证异常') ||
+      verificationError.includes('免冷却')
+    ) {
       return '🆘 立即重发验证码'; // 特殊标识
     }
-    
+
     // 根据验证码状态提供智能提示
     if (!canResend) {
       return '验证码已过期，稍等可重发'; // 在30s容差期内的状态
     }
-    
+
     return '重新发送验证码';
   };
 
@@ -288,6 +293,7 @@ export default function VerifyRequest() {
     setErrorCount(newErrorCount);
     setOtpValue(''); // 清空输入框
     setIsVerifying(false);
+    setVerificationSuccess(''); // 清除成功消息
 
     if (newErrorCount >= 5) {
       // 5次错误后提供明确的下一步指引
@@ -306,11 +312,13 @@ export default function VerifyRequest() {
       }, 10000);
     } else {
       // 🔧 根据错误码显示精确的错误信息
-      let errorMessage = errorCode ? getErrorMessage(errorCode) : '验证码输入有误，请重新检查';
+      let errorMessage = errorCode
+        ? getErrorMessage(errorCode)
+        : '验证码输入有误，请重新检查';
 
       // 🩹 特殊处理 verification_failed
       if (errorCode === 'verification_failed') {
-        errorMessage = 
+        errorMessage =
           '验证过程出现异常，这可能是网络问题导致的。\n\n' +
           '💡 建议：点击"重新发送验证码"获取新的验证码后重试\n\n' +
           '✨ 提示：由于验证异常，您可以立即重新发送验证码，无需等待冷却时间';
@@ -334,11 +342,10 @@ export default function VerifyRequest() {
     }
   };
 
-
   const handleResendCode = async () => {
     // 如果按钮显示可点击但实际上还在冷却，先刷新状态
     if (!canResend || resendLoading) return;
-    
+
     if (resendCooldown > 0) {
       // 冷却中但用户点击了，可能是状态不同步，立即刷新
       await refreshStatus();
@@ -347,6 +354,7 @@ export default function VerifyRequest() {
 
     setResendLoading(true);
     setVerificationError('');
+    setVerificationSuccess('');
     setOtpValue(''); // 清空输入框
     setErrorCount(0); // 重置错误计数
 
@@ -367,21 +375,24 @@ export default function VerifyRequest() {
 
       if (!result.success) {
         // 处理发送错误 - 使用统一的错误处理
-        const errorMessage = result.code === 'RATE_LIMITED' && result.retry
-          ? `请求过于频繁，请 ${result.retry} 秒后重试`
-          : (result.code === 'INVALID_EMAIL' ? '邮箱格式不正确' : '发送验证码失败，请重试');
+        const errorMessage =
+          result.code === 'RATE_LIMITED' && result.retry
+            ? `请求过于频繁，请 ${result.retry} 秒后重试`
+            : result.code === 'INVALID_EMAIL'
+              ? '邮箱格式不正确'
+              : '发送验证码失败，请重试';
         setVerificationError(errorMessage);
       } else {
-        setVerificationError('新的验证码已发送到您的邮箱');
+        setVerificationSuccess('新的验证码已发送到您的邮箱');
         // 10秒后清除成功消息
         setTimeout(() => {
-          setVerificationError('');
+          setVerificationSuccess('');
         }, 10000);
       }
     } catch (error) {
       // 🔧 增强重发验证码的网络错误处理
       console.error('Network error during resend:', error);
-      
+
       // 根据错误类型提供具体的用户提示
       if (error instanceof TypeError && error.message.includes('fetch')) {
         setVerificationError('网络连接异常，无法发送验证码，请检查网络后重试');
@@ -390,7 +401,7 @@ export default function VerifyRequest() {
       } else {
         setVerificationError('发送验证码失败，请检查网络连接后重试');
       }
-      
+
       // 即使出错也尝试刷新状态
       await refreshStatus();
     } finally {
@@ -437,15 +448,19 @@ export default function VerifyRequest() {
           </Circle>
 
           {verificationError && (
-            <Alert
-              borderRadius="md"
-              status={
-                verificationError.includes('已发送') ? 'success' : 'error'
-              }
-            >
+            <Alert borderRadius="md" status="error">
               <AlertIcon />
               <Text fontSize="sm" whiteSpace="pre-line">
                 {verificationError}
+              </Text>
+            </Alert>
+          )}
+
+          {verificationSuccess && (
+            <Alert borderRadius="md" status="success">
+              <AlertIcon />
+              <Text fontSize="sm" whiteSpace="pre-line">
+                {verificationSuccess}
               </Text>
             </Alert>
           )}
@@ -458,7 +473,11 @@ export default function VerifyRequest() {
                 focusBorderColor={
                   verificationError ? 'red.500' : 'brand.purple'
                 }
-                isDisabled={isVerifying || verificationError.includes('验证成功') || errorCount >= 5}
+                isDisabled={
+                  isVerifying ||
+                  verificationSuccess.includes('验证成功') ||
+                  errorCount >= 5
+                }
                 onChange={(value) => {
                   // 🔧 实时清理输入 - 只保留数字
                   const cleaned = value.replace(/\D/g, '');
@@ -519,7 +538,7 @@ export default function VerifyRequest() {
 
           <VStack w="full" spacing={3}>
             <Text color="#64748B" fontSize="sm" textAlign="center">
-              请输入收到的6位验证码（支持直接粘贴，会自动清理格式）
+              请输入收到的6位验证码（支持直接粘贴）
             </Text>
 
             <Button
@@ -543,7 +562,8 @@ export default function VerifyRequest() {
             </Button>
 
             <Text maxW="sm" color="#94A3B8" fontSize="xs" textAlign="center">
-              💡 小贴士：复制粘贴验证码时不用担心格式问题，系统会自动清理空格和其他字符。请检查您的邮箱（包括垃圾邮件文件夹）。
+              💡 小贴士：未收到？请检查您的邮箱（包括垃圾邮件文件夹），或 60
+              秒后重试。
             </Text>
           </VStack>
         </VStack>

@@ -32,7 +32,7 @@ function createOTPEmailHTML(token: string): string {
         ${token}
       </div>
       <p>此验证码将在 <strong>10分钟</strong> 后过期。</p>
-      <p>如果您没有请求此验证码，请忽略此邮件。</p>
+  <p>如果您没有请求此验证码，请忽略此邮件。<br />祝好 Solar 团队</p>
     </div>
   `;
 }
