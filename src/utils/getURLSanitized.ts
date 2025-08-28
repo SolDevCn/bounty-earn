@@ -1,6 +1,11 @@
 export const getURLSanitized = (url: string) => {
   if (!url || url === '-' || url === '#') return url;
 
+  // 如果是相对路径（以/开头），直接返回
+  if (url.startsWith('/')) {
+    return url;
+  }
+
   const isEmail =
     url.includes('@') && !url.includes('http://') && !url.includes('https://');
 

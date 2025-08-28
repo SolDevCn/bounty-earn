@@ -56,7 +56,7 @@ export function HomeBanner() {
       <Text
         pos="relative"
         zIndex={1}
-        maxW={{ base: '70%', md: '100%' }}
+        maxW={{ base: '80%', md: '100%' }}
         color="white"
         fontSize={{ base: 'xl', md: '25px' }}
         fontWeight={'700'}

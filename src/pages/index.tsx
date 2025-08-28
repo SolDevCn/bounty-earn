@@ -8,10 +8,7 @@ import { useEffect, useState } from 'react';
 
 // Remove region-related imports for Chinese platform - complete globalization
 // import { CombinedRegions } from '@/constants/Superteam';
-import {
-  homepageForYouListingsQuery,
-  homepageListingsQuery,
-} from '@/features/home';
+import { homepageListingsQuery } from '@/features/home';
 import {
   // getCombinedRegion,
   type Listing,
@@ -20,14 +17,11 @@ import {
 import { Home } from '@/layouts/Home';
 
 import { authOptions } from './api/auth/[...nextauth]';
-import { getForYouListings } from './api/homepage/for-you';
 import { getListings } from './api/homepage/listings';
 
 interface Props {
   listings: Listing[];
-  openForYouListings: Listing[];
   isAuth: boolean;
-  userRegion: string[] | null;
   userGrantsRegion: Regions[] | null;
 }
 
@@ -39,47 +33,22 @@ const InstallPWAModal = dynamic(
   { ssr: false },
 );
 
-export default function HomePage({
-  listings,
-  isAuth,
-  userRegion,
-  openForYouListings,
-}: Props) {
+export default function HomePage({ listings, isAuth }: Props) {
   const [combinedListings, setCombinedListings] = useState(listings);
-  const [combinedForYouListings, setCombinedForYouListings] =
-    useState(listings);
-
-  const { data: reviewForYouListings } = useQuery({
-    ...homepageForYouListingsQuery({
-      statusFilter: 'review',
-      order: 'desc',
-    }),
-    enabled: isAuth,
-  });
-
-  const { data: completeForYouListings } = useQuery({
-    ...homepageForYouListingsQuery({
-      statusFilter: 'completed',
-      order: 'desc',
-    }),
-    enabled: isAuth,
-  });
 
   const { data: reviewListings } = useQuery(
     homepageListingsQuery({
       order: 'desc',
       statusFilter: 'review',
       userRegion: null, // No region filtering for Chinese platform
-      excludeIds: reviewForYouListings?.map((l) => l.id!),
     }),
   );
 
   const { data: completeListings } = useQuery(
     homepageListingsQuery({
       order: 'desc',
-      statusFilter: 'completed', 
+      statusFilter: 'completed',
       userRegion: null, // No region filtering for Chinese platform
-      excludeIds: completeForYouListings?.map((l) => l.id!),
     }),
   );
 
@@ -93,23 +62,12 @@ export default function HomePage({
     }
   }, [reviewListings, completeListings, listings]);
 
-  useEffect(() => {
-    if (reviewForYouListings && completeForYouListings) {
-      setCombinedForYouListings([
-        ...openForYouListings,
-        ...reviewForYouListings,
-        ...completeForYouListings,
-      ]);
-    }
-  }, [reviewForYouListings, completeForYouListings, openForYouListings]);
-
   return (
     <Home type="landing" isAuth={isAuth}>
       <InstallPWAModal />
       <Box w={'100%'}>
         <ListingTabs
           bounties={combinedListings}
-          forYou={combinedForYouListings}
           isListingsLoading={false}
           emoji=""
           title="赏金任务"
@@ -147,37 +105,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     // } else {
     //   userGrantsRegion = [Regions.GLOBAL];
     // }
-    
+
     // For Chinese platform, everything is global - no region filtering needed
     userRegion = null;
     userGrantsRegion = null;
   }
 
-  let openForYouListings: Awaited<ReturnType<typeof getForYouListings>> = [];
-  if (session && session.user.id) {
-    openForYouListings = await getForYouListings({
-      statusFilter: 'open',
-      order: 'desc',
-      userId: session.user.id,
-    });
-  }
-
   const tab = (context.query.tab as string) || 'open';
-  
+
   const openListings = await getListings({
     statusFilter: 'open',
     order: 'desc',
     userRegion: null, // No region filtering for Chinese platform
-    excludeIds: openForYouListings.map((listing) => listing.id),
     tab,
   });
 
   return {
     props: {
       listings: JSON.parse(JSON.stringify(openListings)),
-      openForYouListings: JSON.parse(JSON.stringify(openForYouListings)),
       isAuth,
-      userRegion,
+      _userRegion: userRegion,
       userGrantsRegion,
     },
   };
