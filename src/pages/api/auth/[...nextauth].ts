@@ -2,7 +2,7 @@ import NextAuth, { type NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { makeTimeCtx, OTP_CONFIG } from '@/lib/auth/constants';
-import logger, { maskSensitiveData, maskSensitiveData } from '@/lib/logger';
+import logger, { maskSensitiveData } from '@/lib/logger';
 import { prisma } from '@/prisma';
 
 export const authOptions: NextAuthOptions = {
