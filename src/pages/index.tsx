@@ -84,7 +84,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
   context,
 ) => {
   const session = await getServerSession(context.req, context.res, authOptions);
-  let userRegion: string[] | null | undefined = null;
   let userGrantsRegion: Regions[] | null | undefined = null;
   let isAuth = false;
 
@@ -107,7 +106,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     // }
 
     // For Chinese platform, everything is global - no region filtering needed
-    userRegion = null;
     userGrantsRegion = null;
   }
 
@@ -124,7 +122,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (
     props: {
       listings: JSON.parse(JSON.stringify(openListings)),
       isAuth,
-      _userRegion: userRegion,
       userGrantsRegion,
     },
   };
