@@ -35,10 +35,30 @@ export const EmailSignIn = () => {
         if (isValidEmail) {
           posthog.capture('email OTP_auth');
           localStorage.setItem('emailForSignIn', email);
-          signIn('email', {
-            email,
-            callbackUrl: `${router.asPath}?loginState=signedIn`,
+          
+          // 发送验证码
+          const response = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
           });
+
+          const result = await response.json();
+          
+          if (result.success) {
+            // 成功发送验证码，跳转到验证页面
+            router.push(`/verify-request?email=${encodeURIComponent(email)}`);
+          } else {
+            // 处理发送失败
+            setIsLoading(false);
+            // 使用统一的错误处理
+            const errorMessage = result.code === 'RATE_LIMITED' && result.retry
+              ? `请求过于频繁，请 ${result.retry} 秒后重试`
+              : (result.code === 'INVALID_EMAIL' ? '邮箱格式不正确' : '发送验证码失败，请重试');
+            setEmailError(errorMessage);
+          }
         } else {
           setIsLoading(false);
           setEmailError(
