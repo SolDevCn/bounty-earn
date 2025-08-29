@@ -9,6 +9,17 @@ export const config = {
   runtime: 'edge',
 };
 
+// 将相对路径转换为绝对URL（用于Edge运行时）
+const getAbsoluteUrl = (path: string) => {
+  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://earn.superteam.fun'; // 生产环境域名
+
+  return path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
 const boldFontP = fetchAsset(
   new URL('../../../../public/Inter-Bold.woff', import.meta.url),
 );
@@ -145,7 +156,7 @@ export default async function handler(request: NextRequest) {
                 objectFit: 'cover',
               }}
               alt="logo"
-              src={`/assets/superteams/banners/${region}.png`}
+              src={getAbsoluteUrl(`/assets/superteams/banners/${region}.png`)}
             />
           </div>
         </div>

@@ -1,5 +1,16 @@
 const fetchAsset = (url: URL) => fetch(url).then((res) => res.arrayBuffer());
 
+// 将相对路径转换为绝对URL（用于Edge运行时）
+const getAbsoluteUrl = (path: string) => {
+  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://earn.superteam.fun'; // 生产环境域名
+
+  return path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
 const formatString = (str: string, maxLength: number) =>
   str?.length > maxLength ? `${str.slice(0, maxLength)}...` : str;
 
@@ -19,4 +30,4 @@ const formatNumber = (num: string) => {
   }
 };
 
-export { fetchAsset, formatNumber, formatString };
+export { fetchAsset, formatNumber, formatString, getAbsoluteUrl };
