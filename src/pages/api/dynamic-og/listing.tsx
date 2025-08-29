@@ -89,15 +89,15 @@ export default async function handler(request: NextRequest) {
     const listingIcon = (() => {
       switch (type) {
         case 'bounty':
-          return 'bolt.svg';
+          return getAbsoluteUrl('/assets/icons/bolt.svg');
         case 'project':
-          return 'briefcase.svg';
+          return getAbsoluteUrl('/assets/icons/briefcase.svg');
         case 'hackathon':
-          return 'laptop.svg';
+          return getAbsoluteUrl('/assets/icons/laptop.svg');
         case 'grant':
-          return 'bank.svg';
+          return getAbsoluteUrl('/assets/icons/bank.svg');
         default:
-          return 'bolt.svg';
+          return getAbsoluteUrl('/assets/icons/bolt.svg');
       }
     })();
 
@@ -161,7 +161,7 @@ export default async function handler(request: NextRequest) {
                     objectFit: 'contain',
                   }}
                   alt="logo"
-                  src={getAbsoluteUrl(`/assets/icons/${listingIcon}`)}
+                  src={listingIcon}
                   width="64px"
                   height="64px"
                 />
