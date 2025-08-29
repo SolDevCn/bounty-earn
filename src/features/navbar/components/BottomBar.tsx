@@ -1,7 +1,7 @@
 import { Box, Button, Flex, Link } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
-import { LuHome, LuNewspaper, LuSearch, LuUser } from 'react-icons/lu';
+import { LuHouse, LuNewspaper, LuSearch, LuUser } from 'react-icons/lu';
 
 import { AuthWrapper } from '@/features/auth';
 import { useUser } from '@/store/user';
@@ -42,7 +42,7 @@ export function BottomBar({ onSearchOpen }: Props) {
           _active={{ bg: 'none' }}
           variant="ghost"
         >
-          <LuHome style={iconStyle} />
+          <LuHouse style={iconStyle} />
         </Button>
       </Link>
       <Button

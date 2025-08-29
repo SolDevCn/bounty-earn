@@ -32,15 +32,20 @@ export const FeedPost: React.FC<Props> = ({ type, id }) => {
     }
   }, [router.isReady, type, id, router]);
 
+  // ✅ Hooks必须在条件语句之前调用
+  const { data, isLoading } = useQuery({
+    ...fetchFeedPostQuery({
+      type: type as 'pow' | 'grant-application' | 'submission',
+      id: id as string
+    }),
+    // 只有参数齐全且router就绪时才发请求
+    enabled: Boolean(router.isReady && type && id),
+  });
+
   // 若参数未就绪或不合法，先不渲染内容（等待 redirect）
   if (!router.isReady || !type || !id) {
     return null;
   }
-
-  const { data, isLoading } = useQuery(fetchFeedPostQuery({ type, id }), {
-    // ✅ 只有参数齐全时才发请求
-    enabled: Boolean(type && id),
-  });
 
   if (!data && !isLoading) {
     return (
