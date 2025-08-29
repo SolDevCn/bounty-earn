@@ -2,7 +2,7 @@ export const getURLSanitized = (url: string) => {
   if (!url || url === '-' || url === '#') return '#';
 
   const trimmedUrl = url.trim();
-  if (!trimmedUrl) return '#';
+  if (!trimmedUrl || trimmedUrl.length > 2048) return '#';
 
   // 1) 站内相对路径：保持相对，不做 scheme 拼接
   if (
@@ -41,11 +41,24 @@ export const getURLSanitized = (url: string) => {
     return getTwitterUrl(trimmedUrl);
   }
 
-  // 6) 裸域名 / 以 www. 开头：补 https
-  if (trimmedUrl.startsWith('www.')) {
+  // 6) 常见域名白名单
+  const trustedDomains = [
+    'github.com', 'docs.google.com', 'drive.google.com',
+    'notion.so', 'notion.site', 'figma.com', 'youtube.com',
+    'youtu.be', 'medium.com', 'dev.to', 'stackoverflow.com',
+    'codepen.io', 'codesandbox.io', 'replit.com', 'glitch.com'
+  ];
+
+  const matchesTrustedDomain = trustedDomains.some(domain =>
+    lower.includes(domain) || lower.startsWith(`www.${domain}`)
+  );
+
+  // 7) www. 开头或可信域名：补 https
+  if (trimmedUrl.startsWith('www.') || matchesTrustedDomain) {
     return `https://${trimmedUrl}`;
   }
-  // 也可做更严格的域名判定，这里按你们的做法默认补 https
+
+  // 8) 其他情况：补 https（保持现有行为）
   return `https://${trimmedUrl}`;
 };
 /**
@@ -62,6 +75,9 @@ export function getTwitterUrl(
 
   if (!raw) return base;
   const input = raw.trim();
+
+  // 长度限制保护
+  if (input.length > 2048) return base;
 
   // 防危险协议
   const lower = input.toLowerCase();

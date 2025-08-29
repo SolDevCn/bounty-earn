@@ -28,7 +28,12 @@ export const FeedCardLink: React.FC<Props> = ({
     if (!href) return false;
     if (href.startsWith('/') || href.startsWith('./') || href.startsWith('../'))
       return true;
-    if (typeof window === 'undefined') return false; // SSR 下统一外链
+
+    // SSR时，假设绝对URL都是外链
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
     try {
       const u = new URL(href, window.location.origin);
       return u.origin === window.location.origin;

@@ -34,8 +34,19 @@ export function SubmissionCard({ sub, type, commentCount }: SubCardProps) {
   // 链接有效性检查函数
   const isValidUrl = (url: string) => {
     if (!url || url === '#') return false;
+
+    // 长度限制
+    if (url.length > 2048) return false;
+
     try {
-      new URL(url);
+      const urlObj = new URL(url);
+
+      // 协议白名单
+      const allowedProtocols = ['http:', 'https:'];
+      if (!allowedProtocols.includes(urlObj.protocol)) {
+        return false;
+      }
+
       return true;
     } catch {
       return false;
@@ -108,9 +119,14 @@ export function SubmissionCard({ sub, type, commentCount }: SubCardProps) {
     finalHref = listingLink; // 统一回任务页
   } else if (hasExternalLink) {
     if (validExternal) {
-      finalHref = isTwitter
-        ? getTwitterUrl(rawLink!)
-        : getURLSanitized(rawLink!);
+      try {
+        finalHref = isTwitter
+          ? getTwitterUrl(rawLink!)
+          : getURLSanitized(rawLink!);
+      } catch (error) {
+        console.warn('URL processing failed:', error);
+        finalHref = internalDetailLink; // 降级到内部详情页
+      }
     } else {
       finalHref = internalDetailLink; // 降级
     }
