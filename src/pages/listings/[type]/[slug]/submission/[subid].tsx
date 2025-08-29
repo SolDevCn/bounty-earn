@@ -6,9 +6,19 @@ const Sumbissions = () => {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { subid } = context.query;
+
+  if (typeof subid !== 'string') {
+    return {
+      redirect: {
+        destination: '/feed',
+        permanent: false,
+      },
+    };
+  }
+
   return {
     redirect: {
-      destination: `/feed/submission/${subid}/`,
+      destination: `/feed/submission/${subid}`,
       permanent: false,
     },
   };

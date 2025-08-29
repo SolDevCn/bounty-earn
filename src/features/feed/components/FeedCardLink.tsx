@@ -5,42 +5,80 @@ import {
   LinkOverlay,
   Text,
 } from '@chakra-ui/react';
-import { type ReactNode } from 'react';
+import NextLink from 'next/link';
+import * as React from 'react';
 
-export const FeedCardLink = ({
+type Props = {
+  href?: string;
+  style?: LinkBoxProps;
+  children: React.ReactNode;
+  onClick?: React.MouseEventHandler;
+  /** 即使是站内链接也在新标签打开（用于 S5 场景） */
+  openInNewTab?: boolean;
+};
+
+export const FeedCardLink: React.FC<Props> = ({
   href,
   style,
   children,
-}: {
-  href: string | undefined;
-  style?: LinkBoxProps;
-  children: ReactNode;
+  onClick,
+  openInNewTab = false,
 }) => {
-  const isInternalLink = href?.startsWith('/') || href?.startsWith('./') || href?.startsWith('../');
+  const isInternalLink = React.useMemo(() => {
+    if (!href) return false;
+    if (href.startsWith('/') || href.startsWith('./') || href.startsWith('../'))
+      return true;
+    if (typeof window === 'undefined') return false; // SSR 下统一外链
+    try {
+      const u = new URL(href, window.location.origin);
+      return u.origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }, [href]);
+
+  const safeHref = href ?? '#';
+  const forceBlank = openInNewTab;
 
   return (
     <LinkBox
-      alignItems={'center'}
+      alignItems="center"
       gap={2}
-      whiteSpace={'nowrap'}
+      display="flex"
+      whiteSpace="nowrap"
       {...style}
-      display={{ base: 'none', md: 'flex' }}
     >
-      <LinkOverlay
-        href={href}
-        rel={isInternalLink ? undefined : "noopener noreferrer"}
-        target={isInternalLink ? undefined : "_blank"}
-      >
-        <Text
-          as="span"
-          color={'#6366F1'}
-          fontSize={{ base: 'sm', md: 'md' }}
-          fontWeight={600}
+      {isInternalLink && !forceBlank ? (
+        <NextLink href={safeHref} passHref legacyBehavior>
+          <LinkOverlay onClick={onClick}>
+            <Text
+              as="span"
+              color="#6366F1"
+              fontSize={{ base: 'sm', md: 'md' }}
+              fontWeight={600}
+            >
+              {children}
+            </Text>
+          </LinkOverlay>
+        </NextLink>
+      ) : (
+        <LinkOverlay
+          href={safeHref}
+          onClick={onClick}
+          rel="noopener noreferrer"
+          target="_blank"
         >
-          {children}
-        </Text>
-      </LinkOverlay>
-      <ArrowForwardIcon color={'#6366F1'} />
+          <Text
+            as="span"
+            color="#6366F1"
+            fontSize={{ base: 'sm', md: 'md' }}
+            fontWeight={600}
+          >
+            {children}
+          </Text>
+        </LinkOverlay>
+      )}
+      <ArrowForwardIcon color="#6366F1" />
     </LinkBox>
   );
 };
