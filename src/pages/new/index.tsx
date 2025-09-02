@@ -23,10 +23,7 @@ import { AuthWrapper } from '@/features/auth';
 import { userCountQuery } from '@/features/home';
 import { Default } from '@/layouts/Default';
 import { Meta } from '@/layouts/Meta';
-import Tensor from '@/public/assets/company-logos/tensor.svg';
 import Jupiter from '@/public/assets/landingsponsor/sponsors/jupiter.webp';
-import Solflare from '@/public/assets/landingsponsor/sponsors/solflare.webp';
-import Squads from '@/public/assets/landingsponsor/sponsors/squads.webp';
 import { useUser } from '@/store/user';
 import { getURL } from '@/utils/validUrl';
 
@@ -270,7 +267,7 @@ export default function NewProfilePage({
                 </Box>
                 <Box flexDir={'column'} gap={5} display={'flex'} px={4}>
                   <BulletPoint type="SPONSOR">
-                    加入 Solar 共建 Solana华语生态
+                    加入 Solar 共建 Solana 华语生态
                   </BulletPoint>
                   <BulletPoint type="SPONSOR">
                     连接 Solana 华语区人才和项目方
@@ -290,33 +287,38 @@ export default function NewProfilePage({
             <Flex align="center" justify="space-between" gap={3} mt={-3} px={3}>
               <Image
                 as={NextImage}
-                h={'20px'}
-                objectFit={'contain'}
-                alt="Jupiter Icon"
-                src={Jupiter as unknown as string}
-              />
-              <Image
-                as={NextImage}
                 h={'34px'}
                 objectFit={'contain'}
-                alt="Solflare Icon"
-                src={Solflare as unknown as string}
+                alt="Bybit Icon"
+                src={
+                  require('@/public/assets/landingsponsor/sponsors/bybit.webp') as string
+                }
               />
               <Image
                 as={NextImage}
-                display={{ base: 'none', md: 'block' }}
-                h={'18px'}
+                h={'20px'}
                 objectFit={'contain'}
-                alt="Squads Icon"
-                src={Squads as unknown as string}
+                alt="Jupiter"
+                src={Jupiter as unknown as string}
               />
               <Image
                 as={NextImage}
                 w={'28px'}
                 h={'28px'}
                 objectFit={'contain'}
-                alt="Tensor Icon"
-                src={Tensor as unknown as string}
+                alt="Kamino Icon"
+                src={
+                  require('@/public/assets/landingsponsor/sponsors/kamino.webp') as string
+                }
+              />
+              <Image
+                as={NextImage}
+                h={'18px'}
+                objectFit={'contain'}
+                alt="Huma Icon"
+                src={
+                  require('@/public/assets/landingsponsor/sponsors/huma.webp') as string
+                }
               />
             </Flex>
           </Flex>

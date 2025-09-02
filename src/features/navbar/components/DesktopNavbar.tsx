@@ -56,18 +56,17 @@ export const DesktopNavbar = ({ onLoginOpen, onSearchOpen }: Props) => {
       <Flex justify={'space-between'} w="100%" maxW={maxWValue} mx="auto">
         <Flex align="center" gap={{ base: 3, lg: 6 }}>
           <LogoContextMenu>
-            <Link
-              as={NextLink}
-              alignItems={'center'}
-              gap={3}
-              display={'flex'}
-              mr={5}
-              _hover={{ textDecoration: 'none' }}
-              href="/"
-              onClick={() => {
-                posthog.capture('homepage logo click_universal');
-              }}
-            >
+            <NextLink href="/" passHref legacyBehavior>
+              <Link
+                alignItems={'center'}
+                gap={3}
+                display={'flex'}
+                mr={5}
+                _hover={{ textDecoration: 'none' }}
+                onClick={() => {
+                  posthog.capture('homepage logo click_universal');
+                }}
+              >
               <Image
                 h={5}
                 cursor="pointer"
@@ -89,7 +88,8 @@ export const DesktopNavbar = ({ onLoginOpen, onSearchOpen }: Props) => {
                   </Text>
                 </>
               )}
-            </Link>
+              </Link>
+            </NextLink>
           </LogoContextMenu>
 
           {router.pathname !== '/search' && (
