@@ -270,7 +270,7 @@ export default function NewProfilePage({
                 </Box>
                 <Box flexDir={'column'} gap={5} display={'flex'} px={4}>
                   <BulletPoint type="SPONSOR">
-                    ，加入Solar共建Solana华语生态
+                    加入 Solar 共建 Solana华语生态
                   </BulletPoint>
                   <BulletPoint type="SPONSOR">
                     连接 Solana 华语区人才和项目方
