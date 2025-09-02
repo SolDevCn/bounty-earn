@@ -1,18 +1,13 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons';
 import { Box, Link, Text } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import NextLink from 'next/link';
 import { usePostHog } from 'posthog-js/react';
 
 import Briefcase from '@/public/assets/home/display/briefcase.webp';
 
-import { userCountQuery } from '../queries';
-
 export const SponsorBanner = () => {
   const posthog = usePostHog();
-
-  const { data } = useQuery(userCountQuery);
   return (
     <Link
       className="ph-no-capture"
@@ -45,12 +40,7 @@ export const SponsorBanner = () => {
           fontWeight={500}
           lineHeight={'1.1rem'}
         >
-          触达超过{' '}
-          {(
-            Math.floor((data?.totalUsers || 0) / 10000) * 10000 +
-            500
-          ).toLocaleString()}
-          名加密货币人才
+          触达华语区加密货币人才
         </Text>
       </Box>
       <Image
