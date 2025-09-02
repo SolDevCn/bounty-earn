@@ -9,7 +9,6 @@ import {
   Image,
   Text,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { type GetServerSideProps } from 'next';
 import NextImage from 'next/image';
@@ -20,7 +19,6 @@ import { MdCheck } from 'react-icons/md';
 import { SponsorButton } from '@/components/ProfileSetup/SponsorButton';
 import { TalentButton } from '@/components/ProfileSetup/TalentButton';
 import { AuthWrapper } from '@/features/auth';
-import { userCountQuery } from '@/features/home';
 import { Default } from '@/layouts/Default';
 import { Meta } from '@/layouts/Meta';
 import Jupiter from '@/public/assets/landingsponsor/sponsors/jupiter.webp';
@@ -46,8 +44,6 @@ export default function NewProfilePage({
       src: '/assets/pfps/fff1.webp',
     },
   ];
-
-  const { data: totals } = useQuery(userCountQuery);
 
   const router = useRouter();
   const { user } = useUser();
@@ -208,11 +204,9 @@ export default function NewProfilePage({
                     />
                   ))}
                 </AvatarGroup>
-                {totals?.totalUsers !== null && (
-                  <Text pos="relative" color="brand.slate.500" fontSize="sm">
-                    加入 {totals?.totalUsers?.toLocaleString()}+ 其他用户
-                  </Text>
-                )}
+                <Text pos="relative" color="brand.slate.500" fontSize="sm">
+                  Solar为社区而生，加入 500+ Solar社区用户
+                </Text>
               </Flex>
             </Flex>
           )}
@@ -287,7 +281,7 @@ export default function NewProfilePage({
             <Flex align="center" justify="space-between" gap={3} mt={-3} px={3}>
               <Image
                 as={NextImage}
-                h={'34px'}
+                h={'20px'}
                 objectFit={'contain'}
                 alt="Bybit Icon"
                 src={
@@ -303,8 +297,7 @@ export default function NewProfilePage({
               />
               <Image
                 as={NextImage}
-                w={'28px'}
-                h={'28px'}
+                h={'22px'}
                 objectFit={'contain'}
                 alt="Kamino Icon"
                 src={

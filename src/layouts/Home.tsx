@@ -2,7 +2,7 @@ import { Box, Container, Flex, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
-import React, { type ReactNode, useEffect, useState } from 'react';
+import React, { type ReactNode, useMemo } from 'react';
 
 import { type Superteams } from '@/constants/Superteam';
 import { HomeBanner, NavTabs, UserStatsBanner } from '@/features/home';
@@ -32,21 +32,19 @@ const HomeSideBar = dynamic(() =>
 
 export function Home({ children, type, st, isAuth }: HomeProps) {
   const router = useRouter();
-  const [currentCategory, setCurrentCategory] = useState<CategoryTypes | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (router.asPath.includes('/category/development/')) {
-      setCurrentCategory('development');
-    } else if (router.asPath.includes('/category/design/')) {
-      setCurrentCategory('design');
-    } else if (router.asPath.includes('/category/content/')) {
-      setCurrentCategory('content');
-    } else if (router.asPath.includes('/category/other/')) {
-      setCurrentCategory('other');
-    }
-  }, [router.asPath]);
+  
+  // Determine current category from router path without state
+  const currentCategory = useMemo((): CategoryTypes | null => {
+    if (type !== 'category') return null;
+    
+    const path = router.asPath;
+    if (path.includes('/category/development/')) return 'development';
+    if (path.includes('/category/design/')) return 'design';
+    if (path.includes('/category/content/')) return 'content';
+    if (path.includes('/category/other/')) return 'other';
+    
+    return null;
+  }, [router.asPath, type]);
 
   const { data: session, status } = useSession();
 
