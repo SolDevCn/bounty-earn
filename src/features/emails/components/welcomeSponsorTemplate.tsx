@@ -15,7 +15,7 @@ export const WelcomeSponsorTemplate = () => {
       <p style={styles.textWithMargin}>
         您在 Solar Earn 上设置您的列表时需要任何帮助，请通过 Telegram 联系&nbsp;
         <a href={PDTG} style={styles.link}>
-          Vesper
+          Solar Earn
         </a>{' '}
       </p>
       <p style={styles.salutation}>

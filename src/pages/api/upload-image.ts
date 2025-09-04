@@ -42,7 +42,7 @@ async function handler(req: NextApiRequestWithUser, res: NextApiResponse) {
     logger.info('Uploading processed image to Cloudinary');
     cloudinary.uploader
       .upload_stream(
-        { resource_type: 'image', folderName },
+        { resource_type: 'image', folder: folderName },
         (error, result) => {
           if (error) {
             logger.error(
