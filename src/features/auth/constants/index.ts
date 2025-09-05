@@ -30,6 +30,7 @@ export const userSelectOptions = {
   website: true,
   workPrefernce: true,
   stLead: true,
+  role: true,
 
   currentSponsor: {
     select: {
