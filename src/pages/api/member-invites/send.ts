@@ -49,6 +49,7 @@ async function sendInvites(
           select: {
             name: true,
             id: true,
+            isActive: true,
           },
         },
         UserSponsors: true,
@@ -58,6 +59,14 @@ async function sendInvites(
     if (!user || !user.currentSponsor) {
       logger.warn(`Unauthorized access attempt by user ID: ${userId}`);
       return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // 🎯 关键业务逻辑检查：只有God激活的Sponsor才能邀请成员
+    if (!user.currentSponsor.isActive && req.role !== 'GOD') {
+      logger.warn(`Inactive sponsor attempted to invite member: ${user.currentSponsor.id}`);
+      return res.status(403).json({ 
+        error: 'Sponsor not activated. Please contact admin for activation.' 
+      });
     }
 
     if (req.role !== 'GOD' && user.UserSponsors[0]?.role !== 'ADMIN') {

@@ -1,17 +1,19 @@
 import type { NextApiResponse } from 'next';
 
-import { type NextApiRequestWithUser, withGodAuth } from '@/features/auth';
+import { withAuth, type AuthenticatedRequest } from '@/features/auth';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 
-interface ActivateSponsorRequest extends NextApiRequestWithUser {
-  sponsorId?: string;
-}
-
 async function activateSponsor(
-  req: ActivateSponsorRequest,
+  req: AuthenticatedRequest,
   res: NextApiResponse,
 ) {
+  // 🎯 内联God权限检查
+  if (req.user.role !== 'GOD') {
+    return res.status(403).json({ 
+      error: 'Forbidden: God权限 required for sponsor activation' 
+    });
+  }
   try {
     const { sponsorId } = req.body;
 
@@ -41,4 +43,4 @@ async function activateSponsor(
   }
 }
 
-export default withGodAuth(activateSponsor);
+export default withAuth(activateSponsor);
