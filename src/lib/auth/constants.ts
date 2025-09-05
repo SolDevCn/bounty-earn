@@ -57,14 +57,12 @@ export function makeTimeCtx() {
   };
 }
 
-import crypto from 'node:crypto';
-
 // 生成安全的6位数字验证码
 export function generateSecureOTP(): string {
-  // 使用加密随机数生成6位数字
+  // 使用Math.random生成6位数字
   let code = '';
   for (let i = 0; i < 6; i++) {
-    code += crypto.randomInt(0, 10).toString();
+    code += Math.floor(Math.random() * 10).toString();
   }
   return code;
 }
