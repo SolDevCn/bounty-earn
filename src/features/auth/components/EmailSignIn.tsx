@@ -1,10 +1,10 @@
 import { Button, FormControl, Input, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { signIn } from 'next-auth/react';
 import { usePostHog } from 'posthog-js/react';
 import React, { useState } from 'react';
 
 import { validateEmailRegex } from '../utils/email';
+import { ERROR_MESSAGES, OTP_ERROR_CODES } from '@/lib/auth/constants';
 
 export const EmailSignIn = () => {
   const [email, setEmail] = useState('');
@@ -54,9 +54,9 @@ export const EmailSignIn = () => {
             // 处理发送失败
             setIsLoading(false);
             // 使用统一的错误处理
-            const errorMessage = result.code === 'RATE_LIMITED' && result.retry
+            const errorMessage = result.code === OTP_ERROR_CODES.RATE_LIMITED && result.retry
               ? `请求过于频繁，请 ${result.retry} 秒后重试`
-              : (result.code === 'INVALID_EMAIL' ? '邮箱格式不正确' : '发送验证码失败，请重试');
+              : (ERROR_MESSAGES[result.code as keyof typeof ERROR_MESSAGES] || '发送验证码失败，请重试');
             setEmailError(errorMessage);
           }
         } else {
@@ -68,7 +68,25 @@ export const EmailSignIn = () => {
       } catch (error) {
         setIsLoading(false);
         console.error('Error during email validation:', error);
-        setEmailError('验证您的电子邮件时发生错误。请稍后重试或联系我们。');
+        
+        // 识别具体的错误类型
+        let errorMessage = '验证您的电子邮件时发生错误。请稍后重试或联系我们。';
+        
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          errorMessage = '网络连接失败，请检查您的网络连接或尝试关闭VPN后重试。';
+        } else if (error instanceof Error) {
+          if (error.message.includes('ENOTFOUND') || error.message.includes('ENETUNREACH')) {
+            errorMessage = '无法连接到服务器，请检查网络连接是否正常。';
+          } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+            errorMessage = '请求超时，可能是网络较慢或VPN连接不稳定，请重试。';
+          } else if (error.message.includes('ECONNRESET') || error.message.includes('EPIPE')) {
+            errorMessage = '连接被重置，可能是网络不稳定或防火墙阻止，请检查网络设置。';
+          } else if (error.message.includes('blocked') || error.message.includes('restricted')) {
+            errorMessage = '请求被阻止，请尝试关闭VPN或更换网络环境。';
+          }
+        }
+        
+        setEmailError(errorMessage);
       }
     } else {
       setIsLoading(false);
