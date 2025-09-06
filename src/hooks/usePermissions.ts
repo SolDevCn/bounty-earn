@@ -11,11 +11,11 @@ import { usePermissionSync } from './usePermissionSync';
 export const usePermissions = () => {
   const { user } = useUser();
   
-  // 启用权限自动同步，每30秒检查一次权限变更
+  // 启用权限自动同步，每30秒检查一次权限变更，但不显示通知
   const { isChecking, forceCheck } = usePermissionSync({
     interval: 30000,
     enabled: true,
-    showNotification: true,
+    showNotification: false,
   });
 
   const permissions = useMemo(() => {
@@ -32,8 +32,14 @@ export const usePermissions = () => {
       };
     }
 
+    // 确保用户具有必要的权限字段，先转换为unknown避免类型检查错误
+    const userWithPermissions: UserWithPermissions = {
+      ...user,
+      UserSponsors: user.UserSponsors || [],
+    } as unknown as UserWithPermissions;
+
     // 创建权限检查器
-    const checker = createPermissionChecker(user as UserWithPermissions);
+    const checker = createPermissionChecker(userWithPermissions);
     const summary = checker.getPermissionSummary();
     
     return {
