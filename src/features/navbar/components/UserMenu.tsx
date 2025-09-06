@@ -14,7 +14,6 @@ import {
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect } from 'react';
 
@@ -30,8 +29,6 @@ export function UserMenu({ }) {
   const { user } = useUser();
   const logout = useLogout();
   const { isGod, canAccessDashboard } = usePermissions();
-
-  const { data: session } = useSession();
 
   const { isOpen, onClose, onOpen } = useDisclosure();
 
@@ -175,15 +172,6 @@ export function UserMenu({ }) {
                 fontWeight={500}
                 title="超级管理员模式"
               >
-                <MenuItem
-                  as={NextLink}
-                  color="brand.slate.500"
-                  fontSize="sm"
-                  fontWeight={600}
-                  href={'/new/sponsor'}
-                >
-                  创建项目方
-                </MenuItem>
               </MenuGroup>
               <MenuDivider />
             </Box>
