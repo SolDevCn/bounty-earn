@@ -81,7 +81,7 @@ export function SubmissionCard({ sub, type, commentCount }: SubCardProps) {
       submissionText = '提交一个赏金任务';
       break;
     case 'project':
-      winningText = '选择一个定向任务';
+      winningText = '赢得一个定向任务';
       submissionText = '申请了一个定向任务';
       break;
     default:
@@ -100,7 +100,9 @@ export function SubmissionCard({ sub, type, commentCount }: SubCardProps) {
     (rawLink.includes('twitter.com') ||
       rawLink.includes('x.com') ||
       rawLink.startsWith('@'));
-  const validExternal = Boolean(hasExternalLink && rawLink && isValidUrl(rawLink));
+  const validExternal = Boolean(
+    hasExternalLink && rawLink && isValidUrl(rawLink),
+  );
 
   // 统一状态判定
   const shouldHideButton = isProject;
