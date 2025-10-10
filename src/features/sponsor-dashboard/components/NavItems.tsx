@@ -27,22 +27,22 @@ export const NavItem = ({
     : false;
 
   return (
-    <Link
-      as={NextLink}
-      _focus={{ boxShadow: 'none' }}
-      href={resolvedLink}
-      isExternal={isExternalLink}
-      style={{ textDecoration: 'none' }}
-    >
-      <NavItemContent
-        icon={icon}
-        isActiveLink={isActiveLink}
-        isExpanded={isExpanded}
-        {...rest}
+    <NextLink href={resolvedLink || '#'} passHref legacyBehavior>
+      <Link
+        _focus={{ boxShadow: 'none' }}
+        isExternal={isExternalLink}
+        style={{ textDecoration: 'none' }}
       >
-        {children}
-      </NavItemContent>
-    </Link>
+        <NavItemContent
+          icon={icon}
+          isActiveLink={isActiveLink}
+          isExpanded={isExpanded}
+          {...rest}
+        >
+          {children}
+        </NavItemContent>
+      </Link>
+    </NextLink>
   );
 };
 

@@ -25,6 +25,9 @@ export const OTP_ERROR_CODES = {
   INVALID_CODE: 'INVALID_CODE',
   VERIFICATION_FAILED: 'VERIFICATION_FAILED',
   EMAIL_SEND_FAILED: 'EMAIL_SEND_FAILED',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  VPN_BLOCKING: 'VPN_BLOCKING',
+  TIMEOUT_ERROR: 'TIMEOUT_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const;
 
@@ -37,6 +40,9 @@ export const ERROR_MESSAGES = {
   [OTP_ERROR_CODES.INVALID_CODE]: '验证码不正确，请检查输入',
   [OTP_ERROR_CODES.VERIFICATION_FAILED]: '验证失败，请重试',
   [OTP_ERROR_CODES.EMAIL_SEND_FAILED]: '邮件发送失败，请重试',
+  [OTP_ERROR_CODES.NETWORK_ERROR]: '网络连接失败，请检查您的网络连接或尝试关闭VPN后重试',
+  [OTP_ERROR_CODES.VPN_BLOCKING]: '请求被阻止，请尝试关闭VPN或更换网络环境',
+  [OTP_ERROR_CODES.TIMEOUT_ERROR]: '请求超时，可能是网络较慢或VPN连接不稳定，请重试',
   [OTP_ERROR_CODES.INTERNAL_ERROR]: '系统错误，请稍后重试',
 } as const;
 
@@ -51,14 +57,12 @@ export function makeTimeCtx() {
   };
 }
 
-import crypto from 'node:crypto';
-
 // 生成安全的6位数字验证码
 export function generateSecureOTP(): string {
-  // 使用加密随机数生成6位数字
+  // 使用Math.random生成6位数字
   let code = '';
   for (let i = 0; i < 6; i++) {
-    code += crypto.randomInt(0, 10).toString();
+    code += Math.floor(Math.random() * 10).toString();
   }
   return code;
 }

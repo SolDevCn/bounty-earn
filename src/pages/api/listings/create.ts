@@ -70,11 +70,19 @@ async function handler(req: NextApiRequestWithSponsor, res: NextApiResponse) {
 
     const sponsor = await prisma.sponsors.findUnique({
       where: { id: userSponsorId },
-      select: { isCaution: true, isVerified: true, st: true },
+      select: { isCaution: true, isVerified: true, st: true, isActive: true },
     });
 
     const isFndnPaying =
       sponsor?.st && type !== 'project' ? req.body.isFndnPaying : false;
+
+    // 🎯 关键业务逻辑检查：只有God激活的Sponsor才能发布任务
+    if (sponsor && !sponsor.isActive && req.role !== 'GOD') {
+      logger.warn(`Inactive sponsor attempted to create listing: ${userSponsorId}`);
+      return res.status(403).json({ 
+        error: 'Sponsor not activated. Please contact admin for activation.' 
+      });
+    }
 
     if (isPublished) {
       publishedAt = new Date();

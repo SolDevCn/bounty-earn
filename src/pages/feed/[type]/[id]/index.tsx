@@ -8,37 +8,37 @@ import {
 } from '@/features/feed';
 
 interface Props {
-  type: FeedPostType;
-  id: string;
+  type?: FeedPostType | null;
+  id?: string | null;
 }
 
 export default function FeedPostPage({ type, id }: Props) {
-  return <FeedPost type={type} id={id} />;
+  // 宽容渲染：参数非法也能渲染（见第 3 步的客户端兜底）
+  return <FeedPost type={type ?? undefined} id={id ?? undefined} />;
 }
 
-const UUIDSchema = z.string().uuid();
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { params } = context;
+// 更宽松：既接受 v4 UUID，也接受常见安全 ID 形态（ULID/CUID/短 ID）
+const IdSchema = z.union([
+  z.string().uuid(),
+  z.string().regex(/^[0-9a-zA-Z._~-]{8,}$/), // 至少 8 位，允许常见 slug/path 片段
+]);
 
-  const type = params?.type;
-  const id = params?.id;
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const rawType = typeof params?.type === 'string' ? params?.type : null;
+  const rawId = typeof params?.id === 'string' ? params?.id : null;
 
-  if (typeof type !== 'string' || !FeedPostTypeSchema.safeParse(type).success) {
-    return {
-      notFound: true,
-    };
-  }
+  const typeOk = !!(rawType && FeedPostTypeSchema.safeParse(rawType).success);
+  const idOk = !!(rawId && IdSchema.safeParse(rawId).success);
 
-  if (typeof id !== 'string' || !UUIDSchema.safeParse(id).success) {
-    return {
-      notFound: true,
-    };
+  // ✅ 软处理：只要有一个非法，就回到 /feed（避免“URL 变了但页面像没动”的观感）
+  if (!typeOk || !idOk) {
+    return { redirect: { destination: '/feed', permanent: false } };
   }
 
   return {
     props: {
-      type,
-      id,
+      type: rawType,
+      id: rawId,
     },
   };
 };

@@ -52,7 +52,7 @@ export function PowCard({ pow, type, commentCount }: PowCardProps) {
           {pow?.title}
         </Text>
       </Flex>
-      <FeedCardLink href={pow?.link}>查看</FeedCardLink>
+      <FeedCardLink href={pow?.link}>查看项目</FeedCardLink>
     </>
   );
 

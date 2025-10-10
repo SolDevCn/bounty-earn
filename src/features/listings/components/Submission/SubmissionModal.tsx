@@ -30,10 +30,9 @@ import {
   TextInputWithHelper,
 } from '@/components/Form/TextAreaHelpers';
 import { SolarMail, tokenList } from '@/constants';
+import { CACHE_INVALIDATION } from '@/lib/cache';
 import { useUser } from '@/store/user';
 
-import { CACHE_INVALIDATION } from '@/lib/cache';
-import { listingSubmissionsQuery, submissionCountQuery } from '../../queries';
 import { userSubmissionQuery } from '../../queries/user-submission-status';
 import { type Listing } from '../../types';
 import { SubmissionTerms } from './SubmissionTerms';
@@ -176,13 +175,13 @@ export const SubmissionModal = ({
 
       // Reset form first
       reset();
-      
+
       // Step 1: Update caches in correct order to avoid race conditions
       if (!editMode) {
         // Invalidate all listing-related cache first
         CACHE_INVALIDATION.LISTING(queryClient, id!);
       }
-      
+
       // Step 2: Invalidate user submission status
       await queryClient.invalidateQueries({
         queryKey: userSubmissionQuery(id!, user!.id).queryKey,
@@ -196,7 +195,7 @@ export const SubmissionModal = ({
 
       // Step 5: Show celebration/survey after a brief delay to ensure stable state
       const latestSubmissionNumber = (user?.Submission?.length ?? 0) + 1;
-      
+
       // Use setTimeout to ensure modal close animation completes and page state stabilizes
       setTimeout(() => {
         if (
@@ -214,11 +213,11 @@ export const SubmissionModal = ({
       console.error('Submission failed:', e);
       setError('Sorry! Please try again or contact support.');
       setIsLoading(false);
-      
+
       // Ensure we clean up loading state and don't leave user stuck
       // Reset form to allow retry
       reset();
-      
+
       // If we're in a bad state, at least allow the user to close the modal
       setTimeout(() => {
         setIsLoading(false);
@@ -243,7 +242,13 @@ export const SubmissionModal = ({
       break;
     case 'bounty':
       headerText = '提交赏金任务';
-      subheadingText = '非常期待您的创作';
+      subheadingText = (
+        <>
+          我们迫不及待想看看您创造什么！
+          <br />
+          注意：在截止日前您可以多次编辑提交
+        </>
+      );
       break;
     case 'hackathon':
       headerText = 'Solana Hackathon';
@@ -313,8 +318,7 @@ export const SubmissionModal = ({
                   <TextAreaWithCounter
                     id="tweetLink"
                     label="推文链接"
-                    helperText="这有助于项目方在 X 上发现和转发您的作品。如果此提交本身便是针对 X 赏金任务，
-添加推文链接，您可以忽略此条。"
+                    helperText="这有助于项目方在 X 上发现和转发您的作品。如果此提交本身是X推文链接，您可以忽略此条。"
                     placeholder=""
                     register={register}
                     watch={watch}

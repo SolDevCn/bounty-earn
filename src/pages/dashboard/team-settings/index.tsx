@@ -52,12 +52,14 @@ import { EarnAvatar } from '@/features/talent';
 import type { UserSponsor } from '@/interface/userSponsor';
 import { SponsorLayout } from '@/layouts/Sponsor';
 import { useUser } from '@/store/user';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const debounce = require('lodash.debounce');
 
 const Index = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { user } = useUser();
+  const { canManageTeam } = usePermissions();
   const [searchText, setSearchText] = useState('');
   const [skip, setSkip] = useState(0);
   const length = 15;
@@ -89,19 +91,8 @@ const Index = () => {
   const totalMembers = membersData?.total || 0;
   const members = membersData?.data || [];
 
-  const isAdminLoggedIn = () => {
-    if (
-      user === undefined ||
-      user?.UserSponsors === undefined ||
-      user?.UserSponsors[0] === undefined
-    ) {
-      return false;
-    }
-
-    return (
-      session?.user?.role === 'GOD' || user?.UserSponsors[0]?.role === 'ADMIN'
-    );
-  };
+  // 使用新的权限Hook，保持向后兼容
+  const isAdminLoggedIn = () => canManageTeam;
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -143,13 +134,7 @@ const Index = () => {
           <Text color="brand.slate.500">管理项目方成员</Text>
         </Flex>
         <Flex align="center" gap={3}>
-          {(session?.user?.role === 'GOD' ||
-            !!(
-              user?.UserSponsors?.length &&
-              user?.UserSponsors.find(
-                (s) => s.sponsorId === user.currentSponsorId,
-              )?.role === 'ADMIN'
-            )) && (
+          {canManageTeam && (
               <Button
                 className="ph-no-capture"
                 color="#6366F1"
@@ -358,6 +343,7 @@ const RemoveMemberModal = ({
   onRemoveMember: (userId: string | undefined) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { canManageTeam } = usePermissions();
 
   const removeMember = async (userId: string | undefined) => {
     await onRemoveMember(userId);
@@ -365,7 +351,7 @@ const RemoveMemberModal = ({
     toast.success('成功');
   };
 
-  const isAdmin = member?.role === 'ADMIN' || session?.user?.role === 'GOD';
+  const isAdmin = member?.role === 'ADMIN' || canManageTeam;
 
   return (
     <Flex align="center" justify="end">

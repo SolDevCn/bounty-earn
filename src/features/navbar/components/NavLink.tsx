@@ -27,8 +27,10 @@ export const NavLink = ({ href, label, isActive, ...props }: NavLinkProps) => {
   };
 
   return (
-    <Link as={NextLink} href={href} {...styles}>
-      <Text>{label}</Text>
-    </Link>
+    <NextLink href={href} passHref legacyBehavior>
+      <Link {...styles}>
+        <Text>{label}</Text>
+      </Link>
+    </NextLink>
   );
 };

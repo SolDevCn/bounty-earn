@@ -209,6 +209,9 @@ export const AddProject = ({
 
               <Box w={'full'} mb={'1.25rem'}>
                 <FormLabel color={'brand.slate.500'}>项目链接</FormLabel>
+                <Text mb={2} color={'brand.slate.400'} fontSize={'sm'}>
+                  添加项目的官网或github或X链接
+                </Text>
                 <InputGroup _placeholder={{ color: 'gray.500' }}>
                   <InputLeftElement
                     _placeholder={{ color: 'gray.500' }}
@@ -222,7 +225,7 @@ export const AddProject = ({
                       color: 'brand.slate.300',
                     }}
                     focusBorderColor="brand.purple"
-                    placeholder=""
+                    placeholder="https://github.com/yourname/project 或 https://x.com/yourname"
                     {...register('link', { required: true })}
                   />
                 </InputGroup>

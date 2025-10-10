@@ -94,6 +94,10 @@ export const FeedCardContainer = ({
   };
 
   const sanitizedLink = getURLSanitized(link);
+  const isInternalLink =
+    sanitizedLink.startsWith('/') ||
+    sanitizedLink.startsWith('./') ||
+    sanitizedLink.startsWith('../');
 
   useEffect(() => {
     setIsLiked(!!like?.find((e: any) => e.id === user?.id));
@@ -168,8 +172,8 @@ export const FeedCardContainer = ({
             }}
             cursor={'pointer'}
             href={sanitizedLink}
-            rel="noopener noreferrer"
-            target="_blank"
+            rel={isInternalLink ? undefined : 'noopener noreferrer'}
+            target={isInternalLink ? undefined : '_blank'}
           >
             {children}
             <Flex

@@ -1,46 +1,136 @@
 export const getURLSanitized = (url: string) => {
-  if (!url || url === '-' || url === '#') return url;
+  if (!url || url === '-' || url === '#') return '#';
 
-  const isEmail =
-    url.includes('@') && !url.includes('http://') && !url.includes('https://');
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl || trimmedUrl.length > 2048) return '#';
 
-  if (isEmail) {
-    return `mailto:${url}`;
-  }
-
+  // 1) 站内相对路径：保持相对，不做 scheme 拼接
   if (
-    !url.includes('https://') &&
-    !url.includes('http://') &&
-    !url.includes('www')
+    trimmedUrl.startsWith('/') ||
+    trimmedUrl.startsWith('./') ||
+    trimmedUrl.startsWith('../')
   ) {
-    return `https://${url}`;
+    return trimmedUrl;
   }
 
-  return url;
+  // 2) 危险协议：一律屏蔽
+  const lower = trimmedUrl.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('data:')) {
+    return '#';
+  }
+
+  // 3) 合法白名单协议：直接放行
+  const allowed = ['http://', 'https://', 'mailto:', 'tel:', 'sms:'];
+  if (allowed.some((p) => lower.startsWith(p))) {
+    return trimmedUrl;
+  }
+
+  // 4) 邮箱（更稳妥可换 regex）
+  const isEmail = trimmedUrl.includes('@') && !trimmedUrl.includes('://');
+  if (isEmail) {
+    return `mailto:${trimmedUrl}`;
+  }
+
+  // 5) Twitter/X 链接规范化
+  const isTwitterLink =
+    lower.includes('twitter.com') ||
+    lower.includes('x.com') ||
+    (trimmedUrl.startsWith('@') && !trimmedUrl.includes('/'));
+
+  if (isTwitterLink) {
+    return getTwitterUrl(trimmedUrl);
+  }
+
+  // 6) 常见域名白名单
+  const trustedDomains = [
+    'github.com', 'docs.google.com', 'drive.google.com',
+    'notion.so', 'notion.site', 'figma.com', 'youtube.com',
+    'youtu.be', 'medium.com', 'dev.to', 'stackoverflow.com',
+    'codepen.io', 'codesandbox.io', 'replit.com', 'glitch.com'
+  ];
+
+  const matchesTrustedDomain = trustedDomains.some(domain =>
+    lower.includes(domain) || lower.startsWith(`www.${domain}`)
+  );
+
+  // 7) www. 开头或可信域名：补 https
+  if (trimmedUrl.startsWith('www.') || matchesTrustedDomain) {
+    return `https://${trimmedUrl}`;
+  }
+
+  // 8) 其他情况：补 https（保持现有行为）
+  return `https://${trimmedUrl}`;
 };
+/**
+ * 规范化 Twitter/X 链接或用户名到标准 URL。
+ * - 输入可为：@user | user | twitter.com/user | x.com/user | http(s)://... | mobile.twitter.com/...
+ * - 自动清理并统一到首选域名（默认 x.com，可配置为 twitter.com）
+ */
+export function getTwitterUrl(
+  raw: string,
+  opts: { preferXDomain?: boolean } = { preferXDomain: true },
+): string {
+  const preferX = Boolean(opts.preferXDomain);
+  const base = preferX ? 'https://x.com' : 'https://twitter.com';
 
-export const getTwitterUrl = (raw: string) => {
-  const trimmed = raw.trim();
+  if (!raw) return base;
+  const input = raw.trim();
 
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    if (trimmed.includes('twitter.com/')) {
-      return trimmed;
+  // 长度限制保护
+  if (input.length > 2048) return base;
+
+  // 防危险协议
+  const lower = input.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('data:')) {
+    return base;
+  }
+
+  // 已是 http(s) 完整链接
+  if (/^https?:\/\//i.test(input)) {
+    try {
+      const u = new URL(input);
+      const host = u.hostname.toLowerCase();
+      const isTwitterHost =
+        host === 'x.com' ||
+        host === 'www.x.com' ||
+        host === 'twitter.com' ||
+        host === 'www.twitter.com' ||
+        host === 'mobile.twitter.com';
+
+      if (isTwitterHost) {
+        u.hostname = preferX ? 'x.com' : 'twitter.com';
+        return u.toString();
+      }
+      // 非 Twitter/X 的链接就原样返回
+      return input;
+    } catch {
+      // 解析失败，走下面兜底
     }
   }
 
+  // 形如：x.com/... | twitter.com/... | www.twitter.com/... | mobile.twitter.com/...
   if (
-    trimmed.startsWith('www.twitter.com/') ||
-    trimmed.startsWith('twitter.com/')
+    /^(www\.)?(twitter\.com|x\.com)\//i.test(input) ||
+    /^mobile\.twitter\.com\//i.test(input)
   ) {
-    return 'https://' + trimmed;
+    const path = input.replace(
+      /^(www\.)?|(twitter\.com|x\.com|mobile\.twitter\.com)\//gi,
+      '',
+    );
+    return `${base}/${path}`;
   }
 
-  const username = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+  // 去掉 @ 前缀
+  const noAt = input.startsWith('@') ? input.slice(1) : input;
 
-  if (username.includes('twitter.com/')) {
-    const parts = username.split('twitter.com/');
-    return `https://twitter.com/${parts[parts.length - 1]}`;
+  // 若仍包含 twitter.com/x.com 片段，取最后一段
+  if (/twitter\.com\/|x\.com\//i.test(noAt)) {
+    const parts = noAt.split(/twitter\.com\/|x\.com\//i);
+    return `${base}/${parts[parts.length - 1]}`;
   }
 
-  return `https://twitter.com/${username}`;
-};
+  // 用户名或路径（含 status/123, lists/... 等）
+  const clean = noAt.replace(/\s+/g, '');
+  if (!clean) return base;
+  return `${base}/${clean}`;
+}

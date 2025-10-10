@@ -27,6 +27,7 @@ export interface FeedDataProps {
   listingType: 'bounty' | 'hackathon' | 'project';
   listingSlug: string;
   isWinnersAnnounced: boolean;
+  isPrivate: boolean;
   token: string;
   sponsorName: string;
   sponsorLogo: string;

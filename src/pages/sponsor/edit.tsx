@@ -1,5 +1,7 @@
 import { InfoOutlineIcon } from '@chakra-ui/icons';
 import {
+  Alert,
+  AlertIcon,
   Box,
   Button,
   Flex,
@@ -130,6 +132,12 @@ const UpdateSponsor = () => {
       });
       await refetchUser();
 
+      // Check activation status and show appropriate message
+      if (sponsorData && !sponsorData.isActive) {
+        // If inactive, show success message with activation notice
+        alert('资料更新成功！您的账户目前处于待激活状态，激活后即可开始发布任务。如需帮助请联系Solar Earn管理员TG：@cryptosheep1');
+      }
+      
       router.push('/dashboard/listings');
     } catch (e: any) {
       if (e?.response?.data?.error?.code === 'P2002') {
@@ -160,6 +168,26 @@ const UpdateSponsor = () => {
             编辑项目方资料
           </Text>
         </VStack>
+
+        {/* Activation Status Banner */}
+        {sponsorData && !sponsorData.isActive && (
+          <Alert maxW="2xl" status="warning" borderRadius="md">
+            <AlertIcon />
+            <Box>
+              <Text fontWeight="bold">账户待激活</Text>
+              <Text fontSize="sm">
+                您的项目方账户目前处于待激活状态。激活后即可开始发布任务和管理项目。如需帮助，请联系Solar Earn管理员TG：@cryptosheep1
+              </Text>
+            </Box>
+          </Alert>
+        )}
+
+        {sponsorData && sponsorData.isActive && (
+          <Alert maxW="2xl" status="success" borderRadius="md">
+            <AlertIcon />
+            <Text>账户已激活，您可以正常使用所有项目方功能！</Text>
+          </Alert>
+        )}
         <VStack w={'2xl'} pt={10}>
           <form
             onSubmit={handleSubmit(async (e) => {
@@ -174,6 +202,7 @@ const UpdateSponsor = () => {
                 entityName: e.entityName,
                 telegram: e.telegram,
                 wechat: e.wechat,
+                isActive: sponsorData?.isActive ?? false,
               });
             })}
             style={{ width: '100%' }}
@@ -422,9 +451,15 @@ const UpdateSponsor = () => {
                   <ImagePicker
                     onChange={async (e) => {
                       setIsImageUploading(true);
-                      const a = await uploadToCloudinary(e, 'earn-sponsor');
-                      setImageUrl(a);
-                      setIsImageUploading(false);
+                      try {
+                        const a = await uploadToCloudinary(e, 'earn-sponsor');
+                        setImageUrl(a);
+                      } catch (error) {
+                        console.error('Upload error:', error);
+                        alert(error instanceof Error ? error.message : '上传失败，请重试');
+                      } finally {
+                        setIsImageUploading(false);
+                      }
                     }}
                     defaultValue={{ url: imageUrl }}
                     onReset={() => {
@@ -435,9 +470,15 @@ const UpdateSponsor = () => {
                   <ImagePicker
                     onChange={async (e) => {
                       setIsImageUploading(true);
-                      const a = await uploadToCloudinary(e, 'earn-sponsor');
-                      setImageUrl(a);
-                      setIsImageUploading(false);
+                      try {
+                        const a = await uploadToCloudinary(e, 'earn-sponsor');
+                        setImageUrl(a);
+                      } catch (error) {
+                        console.error('Upload error:', error);
+                        alert(error instanceof Error ? error.message : '上传失败，请重试');
+                      } finally {
+                        setIsImageUploading(false);
+                      }
                     }}
                     onReset={() => {
                       setImageUrl('');

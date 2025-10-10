@@ -8,6 +8,17 @@ export const config = {
   runtime: 'edge',
 };
 
+// 将相对路径转换为绝对URL（用于Edge运行时）
+const getAbsoluteUrl = (path: string) => {
+  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://earn.superteam.fun'; // 生产环境域名
+
+  return path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
 const mediumFontP = fetchAsset(
   new URL('../../../../public/Inter-Medium.woff', import.meta.url),
 );
@@ -78,15 +89,15 @@ export default async function handler(request: NextRequest) {
     const listingIcon = (() => {
       switch (type) {
         case 'bounty':
-          return 'bolt.svg';
+          return getAbsoluteUrl('/assets/icons/bolt.svg');
         case 'project':
-          return 'briefcase.svg';
+          return getAbsoluteUrl('/assets/icons/briefcase.svg');
         case 'hackathon':
-          return 'laptop.svg';
+          return getAbsoluteUrl('/assets/icons/laptop.svg');
         case 'grant':
-          return 'bank.svg';
+          return getAbsoluteUrl('/assets/icons/bank.svg');
         default:
-          return 'bolt.svg';
+          return getAbsoluteUrl('/assets/icons/bolt.svg');
       }
     })();
 
@@ -150,7 +161,7 @@ export default async function handler(request: NextRequest) {
                     objectFit: 'contain',
                   }}
                   alt="logo"
-                  src={`/assets/icons/${listingIcon}`}
+                  src={listingIcon}
                   width="64px"
                   height="64px"
                 />

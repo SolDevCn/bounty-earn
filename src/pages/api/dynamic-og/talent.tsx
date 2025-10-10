@@ -7,6 +7,17 @@ export const config = {
   runtime: 'edge',
 };
 
+// 将相对路径转换为绝对URL（用于Edge运行时）
+const getAbsoluteUrl = (path: string) => {
+  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://earn.superteam.fun'; // 生产环境域名
+
+  return path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
 const mediumFontP = fetchAsset(
   new URL('../../../../public/Inter-Medium.woff', import.meta.url),
 );
@@ -44,7 +55,7 @@ export default async function handler(request: NextRequest) {
       (
         <div
           style={{
-            backgroundImage: 'url(/assets/og/talent/bg.png)',
+            backgroundImage: `url(${getAbsoluteUrl('/assets/og/talent/bg.png')})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

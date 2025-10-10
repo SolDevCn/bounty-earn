@@ -14,13 +14,13 @@ import {
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect } from 'react';
 
 import { SolarMail } from '@/constants';
 import { EarnAvatar, EmailSettingsModal } from '@/features/talent';
 import { useLogout, useUser } from '@/store/user';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export function UserMenu({ }) {
   const router = useRouter();
@@ -28,8 +28,7 @@ export function UserMenu({ }) {
 
   const { user } = useUser();
   const logout = useLogout();
-
-  const { data: session } = useSession();
+  const { isGod, canAccessDashboard } = usePermissions();
 
   const { isOpen, onClose, onOpen } = useDisclosure();
 
@@ -145,7 +144,7 @@ export function UserMenu({ }) {
               </MenuItem>
             </>
           )}
-          {(!!user?.currentSponsorId || session?.user?.role === 'GOD') && (
+          {canAccessDashboard && (
             <>
               <MenuItem
                 className="ph-no-capture"
@@ -163,7 +162,7 @@ export function UserMenu({ }) {
               </MenuItem>
             </>
           )}
-          {session?.user?.role === 'GOD' && (
+          {isGod && (
             <Box display={{ base: 'none', sm: 'block' }}>
               <MenuGroup
                 mb={0}
@@ -173,15 +172,6 @@ export function UserMenu({ }) {
                 fontWeight={500}
                 title="超级管理员模式"
               >
-                <MenuItem
-                  as={NextLink}
-                  color="brand.slate.500"
-                  fontSize="sm"
-                  fontWeight={600}
-                  href={'/new/sponsor'}
-                >
-                  创建项目方
-                </MenuItem>
               </MenuGroup>
               <MenuDivider />
             </Box>

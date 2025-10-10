@@ -1,5 +1,5 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons';
-import { Flex, Text } from '@chakra-ui/react';
+import { Flex, Link, Text } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
@@ -37,16 +37,17 @@ export const HomeSideBar = ({ type }: SideBarProps) => {
               <Text color={'gray.400'} fontSize={'sm'} fontWeight={500}>
                 进行中的任务
               </Text>
-              <Text
-                as={NextLink}
-                color="brand.purple"
-                fontSize="xs"
-                fontWeight={600}
-                href="/"
-              >
+              <NextLink href="/" passHref legacyBehavior>
+                <Text
+                  as={Link}
+                  color="brand.purple"
+                  fontSize="xs"
+                  fontWeight={600}
+                >
                 查看全部
                 <ArrowForwardIcon ml={1} />
-              </Text>
+                </Text>
+              </NextLink>
             </Flex>
           </LiveListings>
         </>

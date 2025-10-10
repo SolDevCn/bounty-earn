@@ -83,7 +83,7 @@ export const CreateListingModal = ({
                   }}
                 />
                 <Text fontSize="sm" fontWeight="bold">
-                  赏金任务
+                  创建赏金任务
                 </Text>
               </Flex>
             </Center>
@@ -103,7 +103,7 @@ export const CreateListingModal = ({
                 onClick={handleCreateBounty}
                 size="lg"
               >
-                创建任务
+                创建赏金任务
               </Button>
             </Box>
           </Box>

@@ -32,8 +32,18 @@ export async function uploadToCloudinary(
       folder,
     });
 
+    if (!response.data.url) {
+      throw new Error('Upload successful but no URL returned');
+    }
+
     return response.data.url;
   } catch (error) {
     logger.error('Error uploading the image:', error);
+    // Re-throw the error so the calling component can handle it
+    throw new Error(
+      error instanceof Error 
+        ? `上传失败: ${error.message}` 
+        : '图片上传失败，请重试'
+    );
   }
 }

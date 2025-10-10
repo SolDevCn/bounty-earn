@@ -219,8 +219,24 @@ export default async function handler(
       });
     } catch (emailError) {
       const emailDuration = Date.now() - emailStartTime;
-      const errorCode =
-        emailError instanceof Error ? emailError.message : 'unknown_error';
+      let errorCode = 'unknown_error';
+      
+      // 识别具体的网络错误类型
+      if (emailError instanceof Error) {
+        const errorMessage = emailError.message.toLowerCase();
+        
+        if (errorMessage.includes('timeout') || errorMessage.includes('etimedout')) {
+          errorCode = OTP_ERROR_CODES.TIMEOUT_ERROR;
+        } else if (errorMessage.includes('enotfound') || errorMessage.includes('enetunreach')) {
+          errorCode = OTP_ERROR_CODES.NETWORK_ERROR;
+        } else if (errorMessage.includes('blocked') || errorMessage.includes('restricted') || errorMessage.includes('forbidden')) {
+          errorCode = OTP_ERROR_CODES.VPN_BLOCKING;
+        } else if (errorMessage.includes('failed to fetch') || errorMessage.includes('network error')) {
+          errorCode = OTP_ERROR_CODES.NETWORK_ERROR;
+        } else {
+          errorCode = emailError.message;
+        }
+      }
 
       // 🔒 CRITICAL 安全修复：邮件发送失败，立即删除验证码避免幽灵码
       try {
@@ -285,9 +301,14 @@ export default async function handler(
         });
       }
 
-      return res.status(500).json({
+      // 根据错误类型返回适当的状态码和错误信息
+      const statusCode = errorCode === OTP_ERROR_CODES.TIMEOUT_ERROR ? 408 : 
+                        errorCode === OTP_ERROR_CODES.NETWORK_ERROR ? 503 :
+                        errorCode === OTP_ERROR_CODES.VPN_BLOCKING ? 403 : 500;
+      
+      return res.status(statusCode).json({
         success: false,
-        code: OTP_ERROR_CODES.EMAIL_SEND_FAILED,
+        code: Object.values(OTP_ERROR_CODES).includes(errorCode as any) ? errorCode : OTP_ERROR_CODES.EMAIL_SEND_FAILED,
         sn: timeCtx.nowMs,
       });
     }

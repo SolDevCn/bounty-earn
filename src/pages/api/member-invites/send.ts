@@ -5,6 +5,7 @@ import {
   type NextApiRequestWithSponsor,
   withSponsorAuth,
 } from '@/features/auth';
+import { canManageTeamMembers } from '@/features/auth/utils/permissionHelpers';
 import {
   InviteMemberTemplate,
   kashEmail,
@@ -49,6 +50,7 @@ async function sendInvites(
           select: {
             name: true,
             id: true,
+            isActive: true,
           },
         },
         UserSponsors: true,
@@ -60,8 +62,17 @@ async function sendInvites(
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    if (req.role !== 'GOD' && user.UserSponsors[0]?.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Unauthorized' });
+    // 🎯 关键业务逻辑检查：只有God激活的Sponsor才能邀请成员
+    if (!user.currentSponsor.isActive && req.role !== 'GOD') {
+      logger.warn(`Inactive sponsor attempted to invite member: ${user.currentSponsor.id}`);
+      return res.status(403).json({ 
+        error: 'Sponsor not activated. Please contact admin for activation.' 
+      });
+    }
+
+    // 使用统一权限检查 - 相信withSponsorAuth的GOD绕过机制
+    if (!canManageTeamMembers(user)) {
+      return res.status(403).json({ error: 'Unauthorized: Admin role required for team management' });
     }
 
     const isBlocked = await prisma.blockedEmail.findUnique({

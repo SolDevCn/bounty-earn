@@ -249,10 +249,16 @@ export function AboutYou({ setStep, useFormStore }: Step1Props) {
                   defaultValue={{ url: user.photo }}
                   onChange={async (e) => {
                     setUploading(true);
-                    const a = await uploadToCloudinary(e, 'earn-pfp');
-                    setIsGooglePhoto(false);
-                    setImageUrl(a);
-                    setUploading(false);
+                    try {
+                      const a = await uploadToCloudinary(e, 'earn-pfp');
+                      setIsGooglePhoto(false);
+                      setImageUrl(a);
+                    } catch (error) {
+                      console.error('Upload error:', error);
+                      alert(error instanceof Error ? error.message : '上传失败，请重试');
+                    } finally {
+                      setUploading(false);
+                    }
                   }}
                   onReset={() => {
                     setImageUrl('');
@@ -273,9 +279,15 @@ export function AboutYou({ setStep, useFormStore }: Step1Props) {
                 <ImagePicker
                   onChange={async (e) => {
                     setUploading(true);
-                    const a = await uploadToCloudinary(e, 'earn-pfp');
-                    setImageUrl(a);
-                    setUploading(false);
+                    try {
+                      const a = await uploadToCloudinary(e, 'earn-pfp');
+                      setImageUrl(a);
+                    } catch (error) {
+                      console.error('Upload error:', error);
+                      alert(error instanceof Error ? error.message : '上传失败，请重试');
+                    } finally {
+                      setUploading(false);
+                    }
                   }}
                   onReset={() => {
                     setImageUrl('');

@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { usePostHog } from 'posthog-js/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { dayjs } from '@/utils/dayjs';
 
@@ -167,77 +167,75 @@ export const ListingTabs = ({
     },
   ];
 
-  const [activeTab, setActiveTab] = useState<string>(''); // Start with empty to avoid flash
   const posthog = usePostHog();
-  const isInitialized = useRef(false);
+  const isInitialRender = useRef(true);
 
-  // Initialize tab from URL parameter
-  useEffect(() => {
+  // Tab mapping constants
+  const tabMap = useMemo(() => ({
+    open: 'tab1',
+    review: 'tab2',
+    completed: 'tab3',
+  }), []);
+
+  const tabParamMap = useMemo(() => ({
+    tab1: 'open',
+    tab2: 'review',
+    tab3: 'completed',
+  }), []);
+
+  // Get initial tab from URL or default
+  const getInitialTab = useCallback(() => {
     const tabParam = router.query.tab as string;
-    const tabMap: Record<string, string> = {
-      open: 'tab1',
-      review: 'tab2',
-      completed: 'tab3',
-    };
-    
-    // Set initial tab from URL or default to tab1
-    const initialTab = tabParam && tabMap[tabParam] ? tabMap[tabParam] : tabs[0]!.id;
-    setActiveTab(initialTab);
-    isInitialized.current = true;
-  }, [router.query.tab]);
+    return (tabParam && tabMap[tabParam as keyof typeof tabMap]) ? tabMap[tabParam as keyof typeof tabMap] : tabs[0]!.id;
+  }, [router.query.tab, tabMap, tabs]);
 
-  // Update URL when tab changes (only after user interaction)
-  useEffect(() => {
-    // Don't run on initial render or before initialization
-    if (!isInitialized.current || !activeTab) {
-      return;
-    }
-    
-    const tabParamMap: Record<string, string> = {
-      tab1: 'open',
-      tab2: 'review',
-      tab3: 'completed',
-    };
-    const currentTabParam = tabParamMap[activeTab];
-    
-    if (router.query.tab !== currentTabParam) {
-      router.push(
-        {
-          pathname: router.pathname,
-          query: { ...router.query, tab: currentTabParam },
-        },
-        undefined,
-        { shallow: true }
-      );
-    }
-  }, [activeTab, router]);
+  const [activeTab, setActiveTab] = useState<string>(() => getInitialTab());
 
+  // Handle URL-driven tab changes (browser navigation, direct URL access)
   useEffect(() => {
-    const tabParamMap: Record<string, string> = {
-      tab1: 'open_listings',
-      tab2: 'in review_listing',
-      tab3: 'completed_listing',
-    };
-    if (tabParamMap[activeTab]) {
-      posthog.capture(tabParamMap[activeTab]);
+    const newTab = getInitialTab();
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
     }
-  }, [activeTab, posthog]);
+    isInitialRender.current = false;
+  }, [router.query.tab, getInitialTab, activeTab]);
+
+  // Handle tab change from user interaction
+  const handleTabChange = useCallback((tabId: string, posthogEvent: string) => {
+    if (tabId === activeTab) return; // No change needed
+    
+    // Update PostHog immediately
+    posthog.capture(posthogEvent);
+    
+    // Update state
+    setActiveTab(tabId);
+    
+    // Update URL only if not initial render
+    if (!isInitialRender.current) {
+      const newTabParam = tabParamMap[tabId as keyof typeof tabParamMap];
+      if (router.query.tab !== newTabParam) {
+        router.push(
+          {
+            pathname: router.pathname,
+            query: { ...router.query, tab: newTabParam },
+          },
+          undefined,
+          { shallow: true }
+        );
+      }
+    }
+  }, [activeTab, posthog, tabParamMap, router]);
 
   // Generate view all link with current tab parameter
-  const getViewAllLinkWithTab = () => {
+  const getViewAllLinkWithTab = useCallback(() => {
     if (!viewAllLink) return '';
     
-    const tabParamMap: Record<string, string> = {
-      tab1: 'open',
-      tab2: 'review',
-      tab3: 'completed',
-    };
-    const tabParam = tabParamMap[activeTab];
+    const tabParam = tabParamMap[activeTab as keyof typeof tabParamMap];
     
     // Check if the link already has query parameters
     const hasQuery = viewAllLink.includes('?');
     return `${viewAllLink}${hasQuery ? '&' : '?'}tab=${tabParam}`;
-  };
+  }, [viewAllLink, tabParamMap, activeTab]);
 
   // Don't render anything until activeTab is set
   if (!activeTab) {
@@ -312,10 +310,7 @@ export const ListingTabs = ({
                   tab.id === activeTab ? 'brand.slate.700' : 'brand.slate.500'
                 }
                 cursor="pointer"
-                onClick={() => {
-                  posthog.capture(tab.posthog);
-                  setActiveTab(tab.id);
-                }}
+                onClick={() => handleTabChange(tab.id, tab.posthog)}
               >
                 <Text
                   fontSize={['13', '13', '14', '14']}

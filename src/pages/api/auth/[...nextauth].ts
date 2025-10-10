@@ -296,8 +296,41 @@ export const authOptions: NextAuthOptions = {
 
       return true;
     },
-    async jwt({ token, user, account }) {
-      return { ...token, ...user, ...account };
+    async jwt({ token, user, account, trigger }) {
+      // 首次登录时，user对象存在
+      if (user) {
+        return { ...token, ...user, ...account };
+      }
+
+      // 后续请求或session更新时，从数据库获取最新角色信息
+      if (token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+            select: { 
+              id: true, 
+              role: true, 
+              photo: true,
+              firstName: true,
+              lastName: true,
+              location: true,
+            },
+          });
+
+          if (dbUser) {
+            // 更新token中的角色信息，确保与数据库同步
+            token.role = dbUser.role;
+            token.photo = dbUser.photo;
+            token.firstName = dbUser.firstName;
+            token.lastName = dbUser.lastName;
+            token.location = dbUser.location;
+          }
+        } catch (error) {
+          console.error('JWT callback: Failed to fetch user role:', error);
+        }
+      }
+
+      return token;
     },
     async session({ session, token }) {
       session.user.id = token.id;
@@ -305,7 +338,7 @@ export const authOptions: NextAuthOptions = {
       session.user.firstName = token.firstName;
       session.user.lastName = token.lastName;
       session.token = token.access_token;
-      session.user.role = token.role;
+      session.user.role = token.role; // 现在是最新的角色信息
       session.user.location = token.location;
       return session;
     },

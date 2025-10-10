@@ -4,6 +4,7 @@ import {
   type NextApiRequestWithSponsor,
   withSponsorAuth,
 } from '@/features/auth';
+import { createPermissionChecker } from '@/features/auth/utils/unifiedPermissions';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 import { safeStringify } from '@/utils/safeStringify';
@@ -24,74 +25,77 @@ async function removeMember(
   logger.debug(`Request body: ${safeStringify(req.body)}`);
 
   try {
-    logger.debug(`Fetching details for user with ID: ${userId}`);
-    const user = await prisma.user.findUnique({
-      where: { id: userId as string },
-      select: {
-        role: true,
-      },
-    });
-
-    if (!user) {
-      logger.warn(`Unauthorized request by user with ID: ${userId}`);
-      return res.status(400).json({ error: 'Unauthorized' });
-    }
-
-    logger.debug(`Checking sponsor role for user with ID: ${userId}`);
-    const userSponsor = await prisma.userSponsors.findUnique({
-      where: {
-        userId_sponsorId: {
-          userId: userId as string,
-          sponsorId: userSponsorId,
+    // 🎯 使用事务确保权限验证和操作的原子性
+    await prisma.$transaction(async (tx) => {
+      // 在事务内获取最新的用户权限信息
+      const user = await tx.user.findUnique({
+        where: { id: userId as string },
+        select: {
+          id: true,
+          role: true,
+          currentSponsorId: true,
+          UserSponsors: {
+            select: {
+              sponsorId: true,
+              role: true,
+            },
+          },
         },
-      },
-      select: { role: true },
-    });
+      });
 
-    if (user.role !== 'GOD' && (!userSponsor || userSponsor.role !== 'ADMIN')) {
-      logger.warn(`Forbidden request by user with ID: ${userId}`);
-      return res.status(403).json({ error: 'Forbidden' });
-    }
+      if (!user) {
+        throw new Error('User not found');
+      }
 
-    logger.debug(`Fetching member sponsor details for member with ID: ${id}`);
-    const memberSponsor = await prisma.userSponsors.findUnique({
-      where: {
-        userId_sponsorId: {
-          userId: id,
-          sponsorId: userSponsorId,
+      // 权限检查 - 相信withSponsorAuth的GOD绕过机制
+      const permissions = createPermissionChecker(user);
+      permissions.assertCanManageTeam();
+
+      // 检查要删除的成员是否存在
+      const memberToRemove = await tx.userSponsors.findUnique({
+        where: {
+          userId_sponsorId: {
+            userId: id,
+            sponsorId: user.currentSponsorId!,
+          },
         },
-      },
-      select: { role: true },
-    });
+      });
 
-    if (!memberSponsor) {
-      logger.warn(`Member not found with ID: ${id}`);
-      return res.status(404).json({ error: 'Member not found' });
-    }
+      if (!memberToRemove) {
+        throw new Error('Member not found');
+      }
 
-    logger.debug(`Deleting member sponsor record for member with ID: ${id}`);
-    await prisma.userSponsors.delete({
-      where: {
-        userId_sponsorId: {
-          userId: id,
-          sponsorId: userSponsorId,
+      // 执行删除操作
+      await tx.userSponsors.delete({
+        where: {
+          userId_sponsorId: {
+            userId: id,
+            sponsorId: user.currentSponsorId!,
+          },
         },
-      },
-    });
-    await prisma.user.update({
-      where: {
-        id,
-        currentSponsorId: userSponsorId,
-      },
-      data: {
-        currentSponsorId: null,
-      },
+      });
+
+      // 如果该用户的当前sponsor就是被删除的sponsor，清空currentSponsorId
+      await tx.user.updateMany({
+        where: {
+          id,
+          currentSponsorId: user.currentSponsorId,
+        },
+        data: {
+          currentSponsorId: null,
+        },
+      });
     });
 
     logger.info(`Successfully removed member with ID: ${id}`);
     res.status(200).json({ message: 'Member removed successfully.' });
   } catch (error: any) {
-    logger.error(`Error removing member: ${safeStringify(error)}`);
+    logger.error(`Error removing member: ${error.message}`);
+    
+    if (error.message.includes('permissions') || error.message.includes('not found')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

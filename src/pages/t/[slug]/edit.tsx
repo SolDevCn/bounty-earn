@@ -357,9 +357,15 @@ export default function EditProfilePage({ slug }: { slug: string }) {
                       defaultValue={{ url: photoUrl }}
                       onChange={async (e) => {
                         setUploading(true);
-                        const a = await uploadToCloudinary(e, 'earn-pfp');
-                        setValue('photo', a);
-                        setUploading(false);
+                        try {
+                          const a = await uploadToCloudinary(e, 'earn-pfp');
+                          setValue('photo', a);
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                          alert(error instanceof Error ? error.message : '上传失败，请重试');
+                        } finally {
+                          setUploading(false);
+                        }
                       }}
                       onReset={() => {
                         setValue('photo', '');
@@ -370,9 +376,15 @@ export default function EditProfilePage({ slug }: { slug: string }) {
                     <ImagePicker
                       onChange={async (e) => {
                         setUploading(true);
-                        const a = await uploadToCloudinary(e, 'earn-pfp');
-                        setValue('photo', a);
-                        setUploading(false);
+                        try {
+                          const a = await uploadToCloudinary(e, 'earn-pfp');
+                          setValue('photo', a);
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                          alert(error instanceof Error ? error.message : '上传失败，请重试');
+                        } finally {
+                          setUploading(false);
+                        }
                       }}
                       onReset={() => {
                         setValue('photo', '');

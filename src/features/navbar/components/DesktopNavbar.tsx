@@ -1,7 +1,6 @@
 import { SearchIcon } from '@chakra-ui/icons';
 import {
   AbsoluteCenter,
-  Box,
   Button,
   Divider,
   Flex,
@@ -56,18 +55,17 @@ export const DesktopNavbar = ({ onLoginOpen, onSearchOpen }: Props) => {
       <Flex justify={'space-between'} w="100%" maxW={maxWValue} mx="auto">
         <Flex align="center" gap={{ base: 3, lg: 6 }}>
           <LogoContextMenu>
-            <Link
-              as={NextLink}
-              alignItems={'center'}
-              gap={3}
-              display={'flex'}
-              mr={5}
-              _hover={{ textDecoration: 'none' }}
-              href="/"
-              onClick={() => {
-                posthog.capture('homepage logo click_universal');
-              }}
-            >
+            <NextLink href="/" passHref legacyBehavior>
+              <Link
+                alignItems={'center'}
+                gap={3}
+                display={'flex'}
+                mr={5}
+                _hover={{ textDecoration: 'none' }}
+                onClick={() => {
+                  posthog.capture('homepage logo click_universal');
+                }}
+              >
               <Image
                 h={5}
                 cursor="pointer"
@@ -89,7 +87,8 @@ export const DesktopNavbar = ({ onLoginOpen, onSearchOpen }: Props) => {
                   </Text>
                 </>
               )}
-            </Link>
+              </Link>
+            </NextLink>
           </LogoContextMenu>
 
           {router.pathname !== '/search' && (
@@ -171,25 +170,6 @@ export const DesktopNavbar = ({ onLoginOpen, onSearchOpen }: Props) => {
           {status === 'unauthenticated' && !session && (
             <HStack className="ph-no-capture" gap={2}>
               <HStack gap={0}>
-                <Button
-                  fontSize="xs"
-                  onClick={() => {
-                    posthog.capture('create a listing_navbar');
-                    router.push('/new/sponsor/');
-                  }}
-                  size="sm"
-                  variant={'ghost'}
-                >
-                  成为项目方
-                  <Box
-                    display="block"
-                    w={1.5}
-                    h={1.5}
-                    ml={1.5}
-                    bg="#38BDF8"
-                    rounded="full"
-                  />
-                </Button>
                 <Button
                   fontSize="xs"
                   onClick={() => {

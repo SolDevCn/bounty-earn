@@ -23,33 +23,35 @@ function PillTab({ href, children, altActive, phEvent }: PillTabProps) {
   const router = useRouter();
   const posthog = usePostHog();
   return (
-    <Link
-      className="ph-no-capture"
-      as={NextLink}
-      alignItems="center"
-      gap={2}
-      display="flex"
-      px={3}
-      py={{ base: 0, sm: 0.5 }}
-      color={router.asPath === href ? 'black' : 'brand.slate.500'}
-      fontSize={'sm'}
-      bg={
-        router.asPath === href || altActive?.includes(router.asPath)
-          ? '#F5F3FF'
-          : 'white'
-      }
-      borderWidth={1}
-      borderColor="brand.slate.200"
-      _hover={{
-        textDecoration: 'none',
-        bg: '#F5F3FF',
-      }}
-      href={href}
-      onClick={() => posthog.capture(phEvent)}
-      rounded="full"
-    >
-      {children}
-    </Link>
+    <NextLink href={href} passHref legacyBehavior>
+      <Link
+        className="ph-no-capture"
+        alignItems="center"
+        gap={2}
+        display="flex"
+        px={3}
+        py={{ base: 0, sm: 0.5 }}
+        color={router.asPath === href ? 'black' : 'brand.slate.500'}
+        fontSize={'sm'}
+        bg={
+          router.asPath === href || altActive?.includes(router.asPath)
+            ? '#F5F3FF'
+            : 'white'
+        }
+        borderWidth={1}
+        borderColor="brand.slate.200"
+        _hover={{
+          textDecoration: 'none',
+          bg: '#F5F3FF',
+        }}
+        onClick={() => {
+          posthog.capture(phEvent);
+        }}
+        rounded="full"
+      >
+        {children}
+      </Link>
+    </NextLink>
   );
 }
 

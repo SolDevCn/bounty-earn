@@ -263,7 +263,7 @@ export default function VerifyRequest() {
 
     // 根据验证码状态提供智能提示
     if (!canResend) {
-      return '验证码已过期，稍等可重发'; // 在30s容差期内的状态
+      return '验证码已发送，稍等可重发'; // 在30s容差期内的状态
     }
 
     return '重新发送验证码';

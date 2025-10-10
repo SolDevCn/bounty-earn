@@ -1,9 +1,10 @@
 import { Box, Button, Flex, Link } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
-import { LuHome, LuNewspaper, LuSearch, LuUser } from 'react-icons/lu';
+import { LuNewspaper, LuSearch, LuUser } from 'react-icons/lu';
 
 import { AuthWrapper } from '@/features/auth';
+import { HomeIcon } from '@/features/feed';
 import { useUser } from '@/store/user';
 
 interface Props {
@@ -32,19 +33,21 @@ export function BottomBar({ onSearchOpen }: Props) {
       borderTopWidth={1}
       borderTopColor="brand.slate.200"
     >
-      <Link as={NextLink} href="/">
-        <Button
-          sx={{
-            WebkitTapHighlightColor: 'transparent',
-          }}
-          color={setColor('/', router.asPath)}
-          _hover={{ bg: 'none' }}
-          _active={{ bg: 'none' }}
-          variant="ghost"
-        >
-          <LuHome style={iconStyle} />
-        </Button>
-      </Link>
+      <NextLink href="/" passHref legacyBehavior>
+        <Link>
+          <Button
+            sx={{
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            color={setColor('/', router.asPath)}
+            _hover={{ bg: 'none' }}
+            _active={{ bg: 'none' }}
+            variant="ghost"
+          >
+            <HomeIcon />
+          </Button>
+        </Link>
+      </NextLink>
       <Button
         sx={{
           WebkitTapHighlightColor: 'transparent',
@@ -57,47 +60,47 @@ export function BottomBar({ onSearchOpen }: Props) {
       >
         <LuSearch style={iconStyle} />
       </Button>
-      <Link as={NextLink} href="/feed/">
-        <Button
-          sx={{
-            WebkitTapHighlightColor: 'transparent',
-          }}
-          pos="relative"
-          color={setColor('/feed/', router.asPath)}
-          _hover={{ bg: 'none' }}
-          _active={{ bg: 'none' }}
-          variant="ghost"
-        >
-          <LuNewspaper style={iconStyle} />
-          <Box
-            pos="absolute"
-            top={1}
-            right={3}
-            w={2.5}
-            h={2.5}
-            bg="red"
-            rounded="full"
-          />
-        </Button>
-      </Link>
-      <AuthWrapper>
-        <Link
-          as={NextLink}
-          pointerEvents={user ? 'auto' : 'none'}
-          href={`/t/${user?.username}`}
-        >
+      <NextLink href="/feed/" passHref legacyBehavior>
+        <Link>
           <Button
             sx={{
               WebkitTapHighlightColor: 'transparent',
             }}
-            color={setColor(`/t/${user?.username}/`, router.asPath)}
+            pos="relative"
+            color={setColor('/feed/', router.asPath)}
             _hover={{ bg: 'none' }}
             _active={{ bg: 'none' }}
             variant="ghost"
           >
-            <LuUser style={iconStyle} />
+            <LuNewspaper style={iconStyle} />
+            <Box
+              pos="absolute"
+              top={1}
+              right={3}
+              w={2.5}
+              h={2.5}
+              bg="red"
+              rounded="full"
+            />
           </Button>
         </Link>
+      </NextLink>
+      <AuthWrapper>
+        <NextLink href={`/t/${user?.username}`} passHref legacyBehavior>
+          <Link pointerEvents={user ? 'auto' : 'none'}>
+            <Button
+              sx={{
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              color={setColor(`/t/${user?.username}/`, router.asPath)}
+              _hover={{ bg: 'none' }}
+              _active={{ bg: 'none' }}
+              variant="ghost"
+            >
+              <LuUser style={iconStyle} />
+            </Button>
+          </Link>
+        </NextLink>
       </AuthWrapper>
     </Flex>
   );

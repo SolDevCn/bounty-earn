@@ -1,52 +1,39 @@
 import { type NextApiHandler, type NextApiResponse } from 'next';
-import { getToken } from 'next-auth/jwt';
 
 import logger from '@/lib/logger';
-import { prisma } from '@/prisma';
 
-import { type NextApiRequestWithSponsor } from '../types';
+import { withAuth, type AuthenticatedRequest } from './withAuth';
 
 type Handler = (
-  req: NextApiRequestWithSponsor,
+  req: AuthenticatedRequest,
   res: NextApiResponse,
 ) => void | Promise<void>;
 
 export const withSponsorAuth = (handler: Handler): NextApiHandler => {
-  return async (req: NextApiRequestWithSponsor, res: NextApiResponse) => {
-    const token = await getToken({ req });
+  return withAuth(async (req: AuthenticatedRequest, res: NextApiResponse) => {
+    const { user } = req;
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const userId = token.sub;
-    if (!userId) {
-      return res.status(400).json({ error: 'Invalid token' });
-    }
-
-    req.userId = userId;
-
-    try {
-      logger.debug(`Fetching user with ID: ${userId}`);
-      const user = await prisma.user.findUnique({
-        where: { id: userId as string },
-        select: { currentSponsorId: true, role: true },
-      });
-
-      if (!user && (!user.currentSponsorId || user.role !== 'GOD')) {
-        logger.warn('User does not have a current sponsor or is unauthorized');
-        return res
-          .status(403)
-          .json({ error: 'User does not have a current sponsor.' });
-      }
-
-      req.userSponsorId = user.currentSponsorId;
-      req.role = user.role;
-
+    // 🎯 GOD权限绕过机制 - GOD用户可以绕过所有sponsor权限要求
+    if (user.role === 'GOD') {
+      logger.debug(`God user bypassing sponsor auth: ${user.id}`);
+      // 为GOD用户设置兼容字段，确保后续逻辑正常工作
+      req.userSponsorId = user.currentSponsorId || 'god-bypass';
+      req.role = 'GOD';
       return handler(req, res);
-    } catch (error) {
-      logger.error('Error verifying user sponsor:', error);
-      return res.status(500).json({ error: 'Internal Server Error' });
     }
-  };
+
+    // 普通用户需要有sponsor关联
+    if (!user.currentSponsorId) {
+      logger.warn('User does not have a current sponsor or is unauthorized');
+      return res
+        .status(403)
+        .json({ error: 'User does not have a current sponsor.' });
+    }
+
+    // 为了向后兼容，设置这些字段
+    req.userSponsorId = user.currentSponsorId;
+    req.role = user.role;
+
+    return handler(req, res);
+  });
 };

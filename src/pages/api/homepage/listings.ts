@@ -45,6 +45,7 @@ export async function getListings({ statusFilter, excludeIds }: BountyProps) {
       isActive: true,
       isPrivate: false,
       isArchived: false,
+      type: 'bounty', // 只获取赏金任务类型
       ...statusFilterQuery,
       // Remove region filtering to match /api/listings/ behavior and fix empty homepage
       // ...(!isTabOpen && userRegion ? { region: { in: userRegion } } : {}),

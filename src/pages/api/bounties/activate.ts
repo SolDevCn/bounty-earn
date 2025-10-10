@@ -1,14 +1,20 @@
 import type { NextApiResponse } from 'next';
 
-import { type NextApiRequestWithSponsor, withGodAuth } from '@/features/auth';
+import { withAuth, type AuthenticatedRequest } from '@/features/auth';
 import logger from '@/lib/logger';
 import { prisma } from '@/prisma';
 import { safeStringify } from '@/utils/safeStringify';
 
 async function activateBounty(
-  req: NextApiRequestWithSponsor,
+  req: AuthenticatedRequest,
   res: NextApiResponse,
 ) {
+  // 🎯 内联God权限检查
+  if (req.user.role !== 'GOD') {
+    return res.status(403).json({ 
+      error: 'Forbidden: God权限 required for bounty activation' 
+    });
+  }
   const params = req.query;
   const id = params.id as string;
 
@@ -38,4 +44,4 @@ async function activateBounty(
   }
 }
 
-export default withGodAuth(activateBounty);
+export default withAuth(activateBounty);
