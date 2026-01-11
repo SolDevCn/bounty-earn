@@ -37,7 +37,7 @@ export const EmailSignIn = () => {
           localStorage.setItem('emailForSignIn', email);
           
           // 发送验证码
-          const response = await fetch('/api/auth/send-otp', {
+          const response = await fetch('/api/auth/send-otp/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

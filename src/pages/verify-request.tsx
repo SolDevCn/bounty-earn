@@ -49,7 +49,7 @@ export default function VerifyRequest() {
 
     try {
       const response = await fetch(
-        `/api/auth/otp-status?email=${encodeURIComponent(email)}`,
+        `/api/auth/otp-status/?email=${encodeURIComponent(email)}`,
       );
       const result = await response.json();
 
@@ -225,24 +225,6 @@ export default function VerifyRequest() {
     }
   };
 
-  // 解析频率限制中的剩余时间
-  const parseRateLimitInfo = (
-    error: string,
-  ): { remaining: number; message: string } => {
-    const match = error.match(/RATE_LIMITED:(\d+)/);
-    if (match && match[1]) {
-      const remaining = parseInt(match[1], 10);
-      return {
-        remaining,
-        message: `请求过于频繁，请 ${remaining} 秒后重试`,
-      };
-    }
-    return {
-      remaining: 60, // 默认60秒
-      message: '请求过于频繁，请稍后再试',
-    };
-  };
-
   // 智能重发按钮文案 - 基于验证码状态动态显示
   const getResendButtonText = () => {
     if (resendCooldown > 0) {
@@ -267,25 +249,6 @@ export default function VerifyRequest() {
     }
 
     return '重新发送验证码';
-  };
-
-  // 发送邮件错误码到用户文案的映射
-  const getSendErrorMessage = (
-    errorCode: string,
-  ): { message: string; remaining?: number } => {
-    if (errorCode.startsWith('RATE_LIMITED')) {
-      const { remaining, message } = parseRateLimitInfo(errorCode);
-      return { message, remaining };
-    }
-
-    switch (errorCode) {
-      case 'BLOCKED_EMAIL':
-        return { message: '该邮箱暂不可用，请更换邮箱或联系管理员' };
-      case 'EmailSignin':
-        return { message: '邮件发送失败，请稍后重试' };
-      default:
-        return { message: '发送验证码失败，请稍后重试' };
-    }
   };
 
   const handleVerificationError = (errorCode?: string) => {
@@ -360,7 +323,7 @@ export default function VerifyRequest() {
 
     try {
       // 使用自定义API发送验证码
-      const response = await fetch('/api/auth/send-otp', {
+      const response = await fetch('/api/auth/send-otp/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
